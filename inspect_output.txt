@@ -1,0 +1,52 @@
+sheets: ['Spiral Data on Actual Run', 'Sensitivity Analysis Spiral 1', 'Sensitivity Analysis Spiral 5', 'Feed Flow Distribution Spiral']
+
+sheet: Spiral Data on Actual Run
+columns: ['Spiral Data on Actual Run (Baseline)', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3', 'Unnamed: 4', 'Unnamed: 5', 'Unnamed: 6']
+  Spiral Data on Actual Run (Baseline)   Unnamed: 1       Unnamed: 2         Unnamed: 3            Unnamed: 4 Unnamed: 5                Unnamed: 6
+0                          Spiral unit      Product  Flowrate (L/hr)  Slurry Weight (g)  Dry Solid Weight (g)    % Solid  Yield% based on flowrate
+1                                    1  Concentrate             3132               1027                   272   0.264849                   0.24234
+2                                  NaN     Middling             3204               1119                   198   0.176944                  0.247911
+3                                  NaN     Tailings             6588               1454                    88   0.060523                  0.509749
+4                                    2  Concentrate             2988               1233                   968   0.785077                   0.14298
+5                                  NaN     Middling             2898               4472                  1988   0.444544                  0.138674
+6                                  NaN     Tailings            15012               2572                   273   0.106143                  0.718346
+7                                    3  Concentrate             2448               1828                   874   0.478118                  0.180611
+8                                  NaN     Middling             3150               2733                   725   0.265276                  0.232404
+9                                  NaN     Tailings             7956               1478                   200   0.135318                  0.586985
+
+sheet: Sensitivity Analysis Spiral 1
+columns: ['Sensitivity Analysis of Spiral 1', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3', 'Unnamed: 4', 'Unnamed: 5', 'Unnamed: 6']
+   Sensitivity Analysis of Spiral 1    Unnamed: 1       Unnamed: 2         Unnamed: 3            Unnamed: 4 Unnamed: 5              Unnamed: 6
+0                         Condition  Product Type  Flowrate (L/hr)  Slurry Weight (g)  Dry Solid Weight (g)    % Solid  Flowrate based Yield %
+1     Lowest Solid % & Mid Splitter   Concentrate             3132               1027                   267   0.259981                 0.24234
+2                               NaN      Tailings             6588               1454                   147     0.1011                0.509749
+3                               NaN      Middling             3204               1119                   188   0.168007                0.247911
+4  Lowest Solid % & Narrow Splitter   Concentrate             2448                901                    80    0.08879                0.185286
+5                               NaN      Tailings             6804               2485                   106   0.042656                0.514986
+6                               NaN      Middling             3960               1232                   257   0.208604                0.299728
+7    Lowest Solid % & Open Splitter   Concentrate             2820               1559                   507   0.325208                0.233598
+8                               NaN      Tailings             6552               1241                    72   0.058018                0.542744
+9                               NaN      Middling             2700               1139                   103    0.09043                0.223658
+
+sheet: Sensitivity Analysis Spiral 5
+columns: ['Sensitivity Analysis of Spiral 5', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3', 'Unnamed: 4', 'Unnamed: 5', 'Unnamed: 6', 'Unnamed: 7']
+  Sensitivity Analysis of Spiral 5  Unnamed: 1    Unnamed: 2       Unnamed: 3         Unnamed: 4            Unnamed: 5 Unnamed: 6              Unnamed: 7
+0                        Condition  Sample No.  Product Type  Flowrate (L/hr)  Slurry Weight (g)  Dry Solid Weight (g)    % Solid  Flowrate based Yield %
+1               At Narrow Splitter          29   Concentrate             3780               2242                   482   0.214987                0.181661
+2                              NaN          30      Tailings            11124               1917                    71   0.037037                0.534602
+3                              NaN          43      Middling             5904               2497                   676   0.270725                0.283737
+4                 At Open Splitter          31   Concentrate             3528               2239                   736   0.328718                0.187739
+5                              NaN          32      Tailings            11412               2149                    74   0.034435                 0.60728
+6                              NaN          44      Middling             3852               1802                   347   0.192564                0.204981
+7               At Medium Splitter         NaN   Concentrate             5148               3501                  1074   0.306769                0.254448
+8                              NaN         NaN      Middling             2952               1789                   483   0.269983                0.145907
+9                              NaN         NaN      Tailings            12132               3246                    77   0.023722                0.599644
+
+sheet: Feed Flow Distribution Spiral
+columns: ['Feed Flow Distribution in the Spiral Circuit', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3', 'Unnamed: 4']
+  Feed Flow Distribution in the Spiral Circuit       Unnamed: 1         Unnamed: 2            Unnamed: 3 Unnamed: 4
+0                                    Feed Line  Flowrate (L/hr)  Slurry Weight (g)  Dry Solid Weight (g)    % Solid
+1                                       Line 1            15156               2227                  1490   0.669062
+2                                       Line 2            15732               2418                  1385   0.572787
+3                             Additional Water            12528                  —                     —        NaN
+4                                       Line 3            11520               1697                  1333   0.785504
