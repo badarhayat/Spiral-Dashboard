@@ -341,6 +341,77 @@ def main():
     sens_df_summary = pd.DataFrame(sens_summary)
     sens_df_summary = sens_df_summary.sort_values('Score', ascending=False).reset_index(drop=True)
 
+    # Sensitivity analysis for Spiral 5 (secondary spiral treating middlings)
+    sens_df_spiral5 = pd.read_excel(path, sheet_name='Sensitivity Analysis Spiral 5', header=1)
+    sens_df_spiral5.columns = sens_df_spiral5.columns.str.strip()
+    sens_df_spiral5 = sens_df_spiral5.rename(columns={
+        '% Solid': 'Percent Solid',
+    })
+
+    sens_df_spiral5['Condition'] = sens_df_spiral5['Condition'].ffill()
+
+    for col in ['Flowrate (L/hr)', 'Slurry Weight (g)', 'Dry Solid Weight (g)', 'Percent Solid']:
+        if col in sens_df_spiral5.columns:
+            sens_df_spiral5[col] = pd.to_numeric(sens_df_spiral5[col], errors='coerce')
+
+    if 'Percent Solid' in sens_df_spiral5.columns and sens_df_spiral5['Percent Solid'].max() <= 1.0:
+        sens_df_spiral5['Percent Solid'] = sens_df_spiral5['Percent Solid'] * 100
+
+    sens_df_spiral5['Solids Flow'] = sens_df_spiral5['Flowrate (L/hr)'] * (sens_df_spiral5['Percent Solid'] / 100)
+
+    sens_summary_spiral5 = []
+    for condition in sens_df_spiral5['Condition'].dropna().unique():
+        cond_data = sens_df_spiral5[sens_df_spiral5['Condition'] == condition]
+        total_flow = cond_data['Flowrate (L/hr)'].sum()
+        total_solids_flow = cond_data['Solids Flow'].sum()
+        feed_solids_pct = (total_solids_flow / total_flow * 100) if total_flow > 0 else 0
+
+        conc_solids = cond_data[cond_data['Product Type'] == 'Concentrate']['Solids Flow'].sum()
+        middling_solids = cond_data[cond_data['Product Type'] == 'Middling']['Solids Flow'].sum()
+        tailing_solids = cond_data[cond_data['Product Type'] == 'Tailings']['Solids Flow'].sum()
+
+        # Solid-based calculations for Spiral 5
+        solid_yield = (conc_solids / total_solids_flow * 100) if total_solids_flow > 0 else 0
+        middling_fraction = (middling_solids / total_solids_flow * 100) if total_solids_flow > 0 else 0
+        tailing_fraction = (tailing_solids / total_solids_flow * 100) if total_solids_flow > 0 else 0
+
+        # Performance score for Spiral 5 (secondary spiral treating middlings)
+        # Middling heavily penalized due to recycle loop problem
+        score = (solid_yield * 0.4) - (middling_fraction * 0.5) - (tailing_fraction * 0.2)
+
+        condition_str = str(condition)
+        if 'Medium Splitter' in condition_str or 'Mid Splitter' in condition_str:
+            splitter = 'Mid'
+        elif 'Narrow Splitter' in condition_str:
+            splitter = 'Narrow'
+        elif 'Open Splitter' in condition_str:
+            splitter = 'Open'
+        else:
+            splitter = 'Unknown'
+
+        if 'Lowest Solid' in condition_str:
+            solids_level = 'Low'
+        elif 'Medium Solid' in condition_str or 'Mid Solid' in condition_str:
+            solids_level = 'Medium'
+        elif 'Highest Solid' in condition_str:
+            solids_level = 'High'
+        else:
+            solids_level = 'Unknown'
+
+        sens_summary_spiral5.append({
+            'Condition': condition,
+            'Feed Solids %': feed_solids_pct,
+            'Splitter Position': splitter,
+            'Solids Level': solids_level,
+            'Solid Yield %': solid_yield,
+            'Middling Fraction %': middling_fraction,
+            'Tailing Fraction %': tailing_fraction,
+            'Score': score
+        })
+
+    sens_df_summary_spiral5 = pd.DataFrame(sens_summary_spiral5)
+    sens_df_summary_spiral5 = sens_df_summary_spiral5.sort_values('Score', ascending=False).reset_index(drop=True)
+
     # Create tabs
     tabs = st.tabs([
         "🏭 Plant Performance Overview",
@@ -507,23 +578,55 @@ def main():
     # Sensitivity Analysis Tab
     with tabs[3]:
         with st.container():
-            st.markdown("## 🔬 Sensitivity Analysis for Spiral 1")
+            st.markdown("## 🔬 Sensitivity Analysis")
+
+            # Spiral 1 Analysis
+            st.markdown("### Primary Spiral (Spiral 1) - Fresh Feed Processing")
             st.info(
                 '**🔬 Method:** Solids-only calculations reveal true separation efficiency across operating parameters.'
             )
 
-            st.markdown("### Sensitivity Results")
+            st.markdown("#### Sensitivity Results - Spiral 1")
             st.dataframe(sens_df_summary)
 
-            best_condition = sens_df_summary.iloc[0]['Condition'] if not sens_df_summary.empty else None
-            top3 = sens_df_summary.head(3)['Condition'].tolist() if len(sens_df_summary) >= 3 else sens_df_summary['Condition'].tolist()
+            best_condition_spiral1 = sens_df_summary.iloc[0]['Condition'] if not sens_df_summary.empty else None
+            worst_condition_spiral1 = sens_df_summary.iloc[-1]['Condition'] if not sens_df_summary.empty else None
 
-            st.success(f'**🏆 Best Condition:** {best_condition}')
-            st.write(f'**🥈 Top 3 Conditions:** {", ".join(top3)}')
+            st.success(f'**🏆 Best Condition (Spiral 1):** {best_condition_spiral1}')
+            st.error(f'**❌ Worst Condition (Spiral 1):** {worst_condition_spiral1}')
 
-            st.markdown("### Concentrate Yield by Condition")
+            st.markdown("#### Concentrate Yield by Condition - Spiral 1")
             yield_data = sens_df_summary[['Condition', 'Concentrate Solid Yield %']].copy()
-            fig = plot_bar(yield_data, 'Condition', 'Concentrate Solid Yield %', 'Concentrate Solid Yield by Operating Condition', 'Yield %')
+            fig = plot_bar(yield_data, 'Condition', 'Concentrate Solid Yield %', 'Concentrate Solid Yield by Operating Condition - Spiral 1', 'Yield %')
+            st.pyplot(fig, width='stretch')
+
+            st.markdown("---")
+
+            # Spiral 5 Analysis
+            st.markdown("### Secondary Spiral (Spiral 5) - Middlings Processing")
+            st.info(
+                '**🔄 Secondary Spiral Analysis:** Spiral 5 treats middlings from primary spirals. '
+                'Performance scoring heavily penalizes middling production to prevent recycle loop issues. '
+                'Score = (Yield × 0.4) - (Middling × 0.5) - (Tailing × 0.2)'
+            )
+
+            st.markdown("#### Sensitivity Results - Spiral 5")
+            st.dataframe(sens_df_summary_spiral5)
+
+            best_condition_spiral5 = sens_df_summary_spiral5.iloc[0]['Condition'] if not sens_df_summary_spiral5.empty else None
+            worst_condition_spiral5 = sens_df_summary_spiral5.iloc[-1]['Condition'] if not sens_df_summary_spiral5.empty else None
+
+            st.success(f'**🏆 Best Condition (Spiral 5):** {best_condition_spiral5}')
+            st.error(f'**❌ Worst Condition (Spiral 5):** {worst_condition_spiral5}')
+
+            st.markdown("#### Solid Yield by Condition - Spiral 5")
+            yield_data_spiral5 = sens_df_summary_spiral5[['Condition', 'Solid Yield %']].copy()
+            fig = plot_bar(yield_data_spiral5, 'Condition', 'Solid Yield %', 'Solid Yield by Operating Condition - Spiral 5', 'Yield %')
+            st.pyplot(fig, width='stretch')
+
+            st.markdown("#### Middling Fraction by Condition - Spiral 5")
+            middling_data_spiral5 = sens_df_summary_spiral5[['Condition', 'Middling Fraction %']].copy()
+            fig = plot_bar(middling_data_spiral5, 'Condition', 'Middling Fraction %', 'Middling Fraction by Operating Condition - Spiral 5', 'Middling %')
             st.pyplot(fig, width='stretch')
 
     # Recommendations Tab
