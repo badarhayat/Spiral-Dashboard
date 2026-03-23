@@ -796,6 +796,81 @@ def main():
                     f"Best spiral (Spiral {int(best_c['Spiral'])}) should be prioritized. Consider optimizing "
                     f"secondary spiral operation to reduce recirculation load."
                 )
+            
+            st.markdown("---")
+            
+            # Feed conditions comparison
+            st.markdown("### Feed Condition Comparison: Groups A vs B")
+            st.info(
+                "**🔬 Feed Analysis:** Comparing feed characteristics between groups to identify whether "
+                "performance differences stem from feed variations (pulp density, quality) or spiral operation."
+            )
+            
+            # Calculate feed conditions for Group A
+            group_a_df = df[df['Spiral unit'].isin(group_A)]
+            if not group_a_df.empty:
+                group_a_total_flow = group_a_df['Flowrate (L/hr)'].sum()
+                group_a_total_solids = group_a_df['Solids Flow'].sum()
+                group_a_solids_pct = (group_a_total_solids / group_a_total_flow * 100) if group_a_total_flow > 0 else 0
+                group_a_avg_solids_pct = group_a_df['Percent Solid'].mean()
+            else:
+                group_a_total_flow = group_a_total_solids = group_a_solids_pct = group_a_avg_solids_pct = 0
+            
+            # Calculate feed conditions for Group B
+            group_b_df = df[df['Spiral unit'].isin(group_B)]
+            if not group_b_df.empty:
+                group_b_total_flow = group_b_df['Flowrate (L/hr)'].sum()
+                group_b_total_solids = group_b_df['Solids Flow'].sum()
+                group_b_solids_pct = (group_b_total_solids / group_b_total_flow * 100) if group_b_total_flow > 0 else 0
+                group_b_avg_solids_pct = group_b_df['Percent Solid'].mean()
+            else:
+                group_b_total_flow = group_b_total_solids = group_b_solids_pct = group_b_avg_solids_pct = 0
+            
+            # Display comparison
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Group A: Feed Solids %", f"{group_a_solids_pct:.2f}%")
+            with col2:
+                st.metric("Group B: Feed Solids %", f"{group_b_solids_pct:.2f}%")
+            with col3:
+                st.metric("Group A: Total Solids Flow", f"{group_a_total_solids:.1f} L/hr")
+            with col4:
+                st.metric("Group B: Total Solids Flow", f"{group_b_total_solids:.1f} L/hr")
+            
+            # Comparison data table
+            comparison_df = pd.DataFrame({
+                'Parameter': ['Total Flowrate (L/hr)', 'Total Solids Flow (L/hr)', 'Feed Solids %', 'Average % Solid'],
+                'Group A (1–4)': [f'{group_a_total_flow:.1f}', f'{group_a_total_solids:.1f}', 
+                                 f'{group_a_solids_pct:.2f}%', f'{group_a_avg_solids_pct:.2f}%'],
+                'Group B (7–8)': [f'{group_b_total_flow:.1f}', f'{group_b_total_solids:.1f}', 
+                                 f'{group_b_solids_pct:.2f}%', f'{group_b_avg_solids_pct:.2f}%']
+            })
+            st.dataframe(comparison_df, hide_index=True)
+            
+            # Feed condition insights
+            solids_diff = abs(group_a_solids_pct - group_b_solids_pct)
+            yield_a = group_a_data.iloc[0]['Solid Yield %'] if not group_a_data.empty else 0
+            yield_b = group_b_data.iloc[0]['Solid Yield %'] if not group_b_data.empty else 0
+            yield_diff = abs(yield_a - yield_b)
+            
+            st.markdown("#### 📊 Feed Condition Insights")
+            
+            if solids_diff > 2:  # If feed solids % differs by more than 2%
+                st.warning(
+                    f"🔴 **Feed Solids Variation Detected:** Group A and B have different feed solids % "
+                    f"(Difference: {solids_diff:.2f}%). \n\n"
+                    f"⚠️ **Likely cause:** Performance difference is likely due to pulp density variation. "
+                    f"Group with lower solids % receives more dilute feed, which may affect separation efficiency. "
+                    f"Consider adjusting feed density to equalize conditions between groups."
+                )
+            else:
+                st.success(
+                    f"✅ **Similar Feed Conditions:** Group A and B have comparable feed solids % "
+                    f"(Difference: {solids_diff:.2f}%). Feed densities are well-matched.\n\n"
+                    f"💡 **Performance Analysis:** Since feed density is similar but yield differs by {yield_diff:.2f}%, "
+                    f"performance difference is likely due to **feed quality** or **particle size distribution** variations, "
+                    f"or differences in spiral operational settings (splitter position, water pressure, etc.)."
+                )
     
     # Sensitivity Analysis Tab
     with tabs[4]:
