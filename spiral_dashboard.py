@@ -139,8 +139,11 @@ def main():
     selected_spiral = st.sidebar.selectbox('Select Spiral Unit', spirals)
 
     # Pre-compute all dataframes needed across tabs
-    # Primary spirals performance
+    # Define circuit
     primary_spirals = [1, 2, 3, 4, 7, 8]
+    secondary_spirals = [5, 6]
+    
+    # Primary spirals performance
     perf_df = df[df['Spiral unit'].isin(primary_spirals)].copy()
 
     summary_list = []
@@ -200,7 +203,11 @@ def main():
         middling_frac = (middling_solids / total_solids_flow * 100) if total_solids_flow > 0 else 0
         tailing_frac = (tailing_solids / total_solids_flow * 100) if total_solids_flow > 0 else 0
 
-        score = solid_yield - 0.4 * middling_frac - 0.2 * tailing_frac
+        # Different scoring for primary vs secondary spirals
+        if spiral in secondary_spirals:
+            score = (solid_yield * 0.4) - (middling_frac * 0.6) - (tailing_frac * 0.2)
+        else:
+            score = solid_yield - 0.4 * middling_frac - 0.2 * tailing_frac
 
         all_perf_list.append({
             'Spiral': int(spiral),
@@ -377,7 +384,7 @@ def main():
 
         # Performance score for Spiral 5 (secondary spiral treating middlings)
         # Middling heavily penalized due to recycle loop problem
-        score = (solid_yield * 0.4) - (middling_fraction * 0.5) - (tailing_fraction * 0.2)
+        score = (solid_yield * 0.4) - (middling_fraction * 0.6) - (tailing_fraction * 0.2)
 
         condition_str = str(condition)
         if 'Medium Splitter' in condition_str or 'Mid Splitter' in condition_str:
@@ -464,6 +471,20 @@ def main():
 
             st.metric('Circulating Load', f'{circulating_load:.2f}%')
             st.write(f'Primary middlings: {primary_middlings:.1f} L/hr | Recycle: {recycle:.1f} L/hr')
+            
+            # Check for warnings
+            middling_5_6 = df[
+                df['Spiral unit'].isin([5,6]) & 
+                (df['Product'] == 'Middling')
+            ]['Solids Flow'].sum() / df[
+                df['Spiral unit'].isin([5,6])
+            ]['Solids Flow'].sum() * 100 if df[df['Spiral unit'].isin([5,6])]['Solids Flow'].sum() > 0 else 0
+            
+            if middling_5_6 > 40:
+                st.warning("⚠️ High recycle load – system inefficiency increasing")
+            
+            if circulating_load > 200:
+                st.error("🚨 Critical: circuit overloaded due to recycle")
 
     # Individual Spiral Tab
     with tabs[1]:
@@ -543,7 +564,9 @@ def main():
                 'All metrics use **solid mass calculations**:\n'
                 '- **Solid Yield %**: Concentrate solids ÷ Total solids (target > 55%)\n'
                 '- **Middling %**: Middling solids ÷ Total solids (target < 25%)\n'
-                '- **Tailing %**: Tailing solids ÷ Total solids (target < 15%)'
+                '- **Tailing %**: Tailing solids ÷ Total solids (target < 15%)\n'
+                '- **Primary Spirals (1-4,7-8)**: Score = Yield - 0.4×Middling - 0.2×Tailing\n'
+                '- **Secondary Spirals (5-6)**: Score = 0.4×Yield - 0.6×Middling - 0.2×Tailing'
             )
 
             st.dataframe(all_perf_df.style.apply(
@@ -608,15 +631,16 @@ def main():
 
             st.markdown("### Secondary Spiral Overview")
             st.info(
-                '**🔄 Critical Role:** Spiral 5 treats middlings from primary spirals (1-4, 7-8). '
+                '**🔄 Critical Role:** Spirals 5 & 6 treat middlings from primary spirals (1-4, 7-8) PLUS recycled middlings from themselves. '
+                'Feed is NOT independent - it includes both fresh middlings and recycle streams. '
                 'Poor performance creates recycle loops that reduce overall plant efficiency. '
                 'Performance scoring heavily penalizes middling production to prevent recirculation issues.'
             )
 
             # Key performance formula
             st.markdown("### Performance Scoring Formula")
-            st.latex(r'''\text{Score} = (\text{Yield} \times 0.4) - (\text{Middling} \times 0.5) - (\text{Tailing} \times 0.2)''')
-            st.markdown("**Why this formula?** Middling production (×0.5 penalty) is critical to avoid recycle loops.")
+            st.latex(r'''\text{Score} = (\text{Yield} \times 0.4) - (\text{Middling} \times 0.6) - (\text{Tailing} \times 0.2)''')
+            st.markdown("**Why this formula?** Middling production (×0.6 penalty) is critical to avoid recycle loops.")
 
             st.markdown("### Ranked Operating Conditions")
             st.dataframe(sens_df_summary_spiral5.style.apply(
