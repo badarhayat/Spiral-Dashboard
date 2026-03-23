@@ -143,6 +143,11 @@ def main():
     primary_spirals = [1, 2, 3, 4, 7, 8]
     secondary_spirals = [5, 6]
     
+    # Define feed groups with equal feed assumptions
+    group_A = [1, 2, 3, 4]   # same feed tank
+    group_B = [7, 8]         # same feed tank
+    group_C = [5, 6]         # recycle circuit
+    
     # Primary spirals performance
     perf_df = df[df['Spiral unit'].isin(primary_spirals)].copy()
 
@@ -455,22 +460,73 @@ def main():
             with col2:
                 st.metric('Overall Solids %', f'{overall_solids_pct:.2f}%')
 
-            st.markdown("### Circulating Load Analysis")
+            st.markdown("### Feed Distribution & Circulating Load Analysis")
+            
+            # Calculate feed flows for each group
+            group_a_feed = df[df['Spiral unit'].isin(group_A)]['Flowrate (L/hr)'].sum()
+            group_b_feed = df[df['Spiral unit'].isin(group_B)]['Flowrate (L/hr)'].sum()
+            
+            # Primary middlings (fresh feed to secondary spirals)
             primary_middlings = df[
                 df['Spiral unit'].isin([1,2,3,4,7,8]) &
                 (df['Product'] == 'Middling')
             ]['Solids Flow'].sum()
-
+            
+            # Recycled middlings from secondary spirals
             recycle = df[
                 df['Spiral unit'].isin([5,6]) &
                 (df['Product'] == 'Middling')
             ]['Solids Flow'].sum()
-
-            total_feed_56 = primary_middlings + recycle
+            
+            # Circulating load: recycle / fresh_feed * 100
             circulating_load = (recycle / primary_middlings) * 100 if primary_middlings > 0 else 0
-
-            st.metric('Circulating Load', f'{circulating_load:.2f}%')
-            st.write(f'Primary middlings: {primary_middlings:.1f} L/hr | Recycle: {recycle:.1f} L/hr')
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric('Primary Middlings', f'{primary_middlings:.1f} L/hr')
+            with col2:
+                st.metric('Recycled Middlings', f'{recycle:.1f} L/hr')
+            with col3:
+                st.metric('Circulating Load %', f'{circulating_load:.1f}%')
+            
+            st.markdown("---")
+            st.markdown("#### Feed Group Analysis")
+            
+            # Group A feed distribution
+            st.markdown(f"**Group A (Spirals {group_A})** - Same Feed Tank")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric('Total Group A Feed', f'{group_a_feed:.1f} L/hr')
+                avg_a = group_a_feed / len(group_A) if len(group_A) > 0 else 0
+                st.write(f'Assumed equal feed per spiral: {avg_a:.1f} L/hr')
+            with col2:
+                group_a_perf = all_perf_df[all_perf_df['Spiral'].isin(group_A)][['Spiral', 'Score']]
+                st.write(group_a_perf.to_string(index=False))
+            
+            # Group A comparison insights
+            if len(group_a_perf) > 1:
+                score_range_a = group_a_perf['Score'].max() - group_a_perf['Score'].min()
+                if score_range_a > 2:
+                    st.info(f"ℹ️ **Group A Insight:** Score difference = {score_range_a:.2f}. Performance difference is due to spiral settings, not feed variation.")
+            
+            st.markdown(f"\n**Group B (Spirals {group_B})** - Same Feed Tank")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric('Total Group B Feed', f'{group_b_feed:.1f} L/hr')
+                avg_b = group_b_feed / len(group_B) if len(group_B) > 0 else 0
+                st.write(f'Assumed equal feed per spiral: {avg_b:.1f} L/hr')
+            with col2:
+                group_b_perf = all_perf_df[all_perf_df['Spiral'].isin(group_B)][['Spiral', 'Score']]
+                st.write(group_b_perf.to_string(index=False))
+            
+            # Group B comparison insights
+            if len(group_b_perf) > 1:
+                score_range_b = group_b_perf['Score'].max() - group_b_perf['Score'].min()
+                if score_range_b > 2:
+                    st.info(f"ℹ️ **Group B Insight:** Score difference = {score_range_b:.2f}. Performance difference is due to spiral settings, not feed variation.")
+            
+            st.markdown(f"\n**Group C (Spirals {group_C})** - Recycle Circuit")
+            st.write(f'Feed = Primary middlings ({primary_middlings:.1f} L/hr) + Recycled middlings ({recycle:.1f} L/hr) = {primary_middlings + recycle:.1f} L/hr')
             
             # Check for warnings
             middling_5_6 = df[
@@ -574,6 +630,41 @@ def main():
                           (['background-color: #f8d7da'] * len(x) if x.name == len(all_perf_df) - 1 else ['']*len(x)),
                 axis=1
             ))
+
+            st.markdown("### Feed Group Analysis")
+            st.info(
+                "**📋 Feed Distribution:** Spirals are organized into groups receiving feed from the same tank. "
+                "Equal feed distribution is assumed within each group. Performance differences reflect spiral settings, not feed variations."
+            )
+            
+            # Group A
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Group A (Spirals {group_A})**")
+                group_a_data = all_perf_df[all_perf_df['Spiral'].isin(group_A)].sort_values('Score', ascending=False)
+                st.dataframe(group_a_data[['Spiral', 'Solid Yield %', 'Middling %', 'Score']])
+                if len(group_a_data) > 1:
+                    score_diff = group_a_data.iloc[0]['Score'] - group_a_data.iloc[-1]['Score']
+                    st.write(f"📊 Score range: {score_diff:.2f} (due to spiral settings)")
+            
+            with col2:
+                st.markdown(f"**Group B (Spirals {group_B})**")
+                group_b_data = all_perf_df[all_perf_df['Spiral'].isin(group_B)].sort_values('Score', ascending=False)
+                st.dataframe(group_b_data[['Spiral', 'Solid Yield %', 'Middling %', 'Score']])
+                if len(group_b_data) > 1:
+                    score_diff = group_b_data.iloc[0]['Score'] - group_b_data.iloc[-1]['Score']
+                    st.write(f"📊 Score range: {score_diff:.2f} (due to spiral settings)")
+            
+            st.markdown(f"**Group C (Spirals {group_C}) - Recycle Circuit**")
+            group_c_data = all_perf_df[all_perf_df['Spiral'].isin(group_C)].sort_values('Score', ascending=False)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.dataframe(group_c_data[['Spiral', 'Solid Yield %', 'Middling %', 'Score']])
+            with col2:
+                st.write(f"Feed source: Primary middlings + Recycle")
+                st.write(f"Critical: Minimize middling production to reduce recycle")
+            with col3:
+                st.write("")
 
             st.markdown("### Performance Insights")
             for idx, row in all_perf_df.iterrows():
