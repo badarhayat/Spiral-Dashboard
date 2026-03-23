@@ -418,7 +418,8 @@ def main():
         "🔍 Individual Spiral Analysis",
         "📊 Spiral Comparison",
         "🔬 Sensitivity Analysis",
-        "💡 Recommendations"
+        "� Spiral 5 Sensitivity",
+        "�💡 Recommendations"
     ])
 
     # Overview Tab
@@ -578,15 +579,15 @@ def main():
     # Sensitivity Analysis Tab
     with tabs[3]:
         with st.container():
-            st.markdown("## 🔬 Sensitivity Analysis")
+            st.markdown("## 🔬 Sensitivity Analysis - Primary Spiral (Spiral 1)")
 
-            # Spiral 1 Analysis
-            st.markdown("### Primary Spiral (Spiral 1) - Fresh Feed Processing")
             st.info(
-                '**🔬 Method:** Solids-only calculations reveal true separation efficiency across operating parameters.'
+                '**🔬 Primary Spiral Analysis:** Spiral 1 processes fresh feed. '
+                'Standard performance scoring balances yield, middling control, and tailings minimization. '
+                'Score = (Yield × 0.5) + (Solids × 0.3) - (Middling × 0.4) - (Tailing × 0.2)'
             )
 
-            st.markdown("#### Sensitivity Results - Spiral 1")
+            st.markdown("### Sensitivity Results - Spiral 1")
             st.dataframe(sens_df_summary)
 
             best_condition_spiral1 = sens_df_summary.iloc[0]['Condition'] if not sens_df_summary.empty else None
@@ -595,101 +596,138 @@ def main():
             st.success(f'**🏆 Best Condition (Spiral 1):** {best_condition_spiral1}')
             st.error(f'**❌ Worst Condition (Spiral 1):** {worst_condition_spiral1}')
 
-            st.markdown("#### Concentrate Yield by Condition - Spiral 1")
+            st.markdown("### Concentrate Yield by Condition - Spiral 1")
             yield_data = sens_df_summary[['Condition', 'Concentrate Solid Yield %']].copy()
             fig = plot_bar(yield_data, 'Condition', 'Concentrate Solid Yield %', 'Concentrate Solid Yield by Operating Condition - Spiral 1', 'Yield %')
             st.pyplot(fig, width='stretch')
 
-            st.markdown("---")
+    # Spiral 5 Sensitivity Tab
+    with tabs[4]:
+        with st.container():
+            st.markdown("## 🔄 Spiral 5 Sensitivity Analysis")
 
-            # Spiral 5 Analysis
-            st.markdown("### Secondary Spiral (Spiral 5) - Middlings Processing")
+            st.markdown("### Secondary Spiral Overview")
             st.info(
-                '**🔄 Secondary Spiral Analysis:** Spiral 5 treats middlings from primary spirals. '
-                'Performance scoring heavily penalizes middling production to prevent recycle loop issues. '
-                'Score = (Yield × 0.4) - (Middling × 0.5) - (Tailing × 0.2)'
+                '**🔄 Critical Role:** Spiral 5 treats middlings from primary spirals (1-4, 7-8). '
+                'Poor performance creates recycle loops that reduce overall plant efficiency. '
+                'Performance scoring heavily penalizes middling production to prevent recirculation issues.'
             )
 
-            st.markdown("#### Sensitivity Results - Spiral 5")
-            st.dataframe(sens_df_summary_spiral5)
+            # Key performance formula
+            st.markdown("### Performance Scoring Formula")
+            st.latex(r'''\text{Score} = (\text{Yield} \times 0.4) - (\text{Middling} \times 0.5) - (\text{Tailing} \times 0.2)''')
+            st.markdown("**Why this formula?** Middling production (×0.5 penalty) is critical to avoid recycle loops.")
 
+            st.markdown("### Ranked Operating Conditions")
+            st.dataframe(sens_df_summary_spiral5.style.apply(
+                lambda x: ['background-color: #d4edda'] * len(x) if x.name == 0 else
+                          (['background-color: #f8d7da'] * len(x) if x.name == len(sens_df_summary_spiral5) - 1 else ['']*len(x)),
+                axis=1
+            ))
+
+            # Best operating point
             best_condition_spiral5 = sens_df_summary_spiral5.iloc[0]['Condition'] if not sens_df_summary_spiral5.empty else None
+            best_row = sens_df_summary_spiral5.iloc[0] if not sens_df_summary_spiral5.empty else None
+
+            st.markdown("### 🏆 Best Operating Point")
+            if best_row is not None:
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("**Best Condition**", best_condition_spiral5)
+                with col2:
+                    st.metric("**Solid Yield**", f"{best_row['Solid Yield %']:.1f}%")
+                with col3:
+                    st.metric("**Middling Fraction**", f"{best_row['Middling Fraction %']:.1f}%")
+
+            # Worst condition for comparison
             worst_condition_spiral5 = sens_df_summary_spiral5.iloc[-1]['Condition'] if not sens_df_summary_spiral5.empty else None
+            st.markdown("### ❌ Worst Operating Point")
+            st.error(f"**Avoid:** {worst_condition_spiral5} - High middling production leads to recycle loops")
 
-            st.success(f'**🏆 Best Condition (Spiral 5):** {best_condition_spiral5}')
-            st.error(f'**❌ Worst Condition (Spiral 5):** {worst_condition_spiral5}')
+            st.markdown("### 📊 Performance Analysis")
 
-            st.markdown("#### Solid Yield by Condition - Spiral 5")
+            # Solid yield chart
+            st.markdown("#### Solid Yield by Condition")
             yield_data_spiral5 = sens_df_summary_spiral5[['Condition', 'Solid Yield %']].copy()
-            fig = plot_bar(yield_data_spiral5, 'Condition', 'Solid Yield %', 'Solid Yield by Operating Condition - Spiral 5', 'Yield %')
+            fig = plot_bar(yield_data_spiral5, 'Condition', 'Solid Yield %', 'Solid Yield Performance - Spiral 5', 'Yield %')
             st.pyplot(fig, width='stretch')
 
-            st.markdown("#### Middling Fraction by Condition - Spiral 5")
+            # Middling fraction chart (emphasized as critical)
+            st.markdown("#### ⚠️ Middling Fraction by Condition (Critical Parameter)")
             middling_data_spiral5 = sens_df_summary_spiral5[['Condition', 'Middling Fraction %']].copy()
-            fig = plot_bar(middling_data_spiral5, 'Condition', 'Middling Fraction %', 'Middling Fraction by Operating Condition - Spiral 5', 'Middling %')
+            fig = plot_bar(middling_data_spiral5, 'Condition', 'Middling Fraction %', 'Middling Production - Spiral 5 (Lower is Better)', 'Middling %')
             st.pyplot(fig, width='stretch')
 
-            st.markdown("#### Yield vs Middling Trade-off - Spiral 5")
-            # Create scatter plot
+            # Trade-off analysis
+            st.markdown("### 🔄 Yield vs Middling Trade-off")
             fig, ax = plt.subplots(figsize=(12, 8))
             scatter_data = sens_df_summary_spiral5.copy()
 
-            # Create scatter plot
             scatter = ax.scatter(scatter_data['Solid Yield %'], scatter_data['Middling Fraction %'],
-                               s=100, c=range(len(scatter_data)), cmap='viridis', alpha=0.8, edgecolors='black')
+                               s=120, c=range(len(scatter_data)), cmap='RdYlGn_r', alpha=0.8, edgecolors='black')
 
             # Add condition labels
             for i, row in scatter_data.iterrows():
                 ax.annotate(row['Condition'], (row['Solid Yield %'], row['Middling Fraction %']),
-                           xytext=(5, 5), textcoords='offset points', fontsize=10, fontweight='medium')
+                           xytext=(8, 8), textcoords='offset points', fontsize=11, fontweight='bold',
+                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
 
-            # Enhanced styling
-            ax.set_title('Yield vs Middling Trade-off Analysis - Spiral 5', fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
-            ax.set_xlabel('Solid Yield %', fontsize=14, fontweight='medium', color='#34495e')
-            ax.set_ylabel('Middling Fraction %', fontsize=14, fontweight='medium', color='#34495e')
+            ax.set_title('Yield vs Middling Trade-off - Spiral 5', fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+            ax.set_xlabel('Solid Yield % (Higher is Better)', fontsize=14, fontweight='medium', color='#34495e')
+            ax.set_ylabel('Middling Fraction % (Lower is Better)', fontsize=14, fontweight='medium', color='#34495e')
 
-            # Improve axis styling
             plt.xticks(fontsize=12)
             plt.yticks(fontsize=12)
-
-            # Clean grid and spines
             ax.grid(True, alpha=0.3)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_linewidth(0.5)
             ax.spines['bottom'].set_linewidth(0.5)
-
-            # Keep white background
             ax.set_facecolor('#FFFFFF')
 
-            # Add colorbar
             cbar = plt.colorbar(scatter, ax=ax)
-            cbar.set_label('Condition Rank (Best to Worst)', fontsize=12)
+            cbar.set_label('Performance Rank (Green = Best)', fontsize=12)
 
             plt.tight_layout()
             st.pyplot(fig, width='stretch')
 
-            # Add insights about the trade-off
-            st.markdown("#### Trade-off Analysis Insights")
-            best_yield = scatter_data['Solid Yield %'].max()
-            best_middling = scatter_data['Middling Fraction %'].min()
+            # Correlation insights
             correlation = scatter_data['Solid Yield %'].corr(scatter_data['Middling Fraction %'])
-
+            st.markdown("### 📈 Trade-off Insights")
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Highest Yield Condition", f"{best_yield:.1f}%")
+                st.metric("**Yield-Middling Correlation**", f"{correlation:.3f}")
             with col2:
-                st.metric("Lowest Middling Condition", f"{best_middling:.1f}%")
+                trend = "Positive (Trade-off)" if correlation > 0.3 else "Negative (Win-win)" if correlation < -0.3 else "Neutral"
+                st.metric("**Relationship**", trend)
+
+            # Recommendations
+            st.markdown("### 💡 Operating Recommendations")
+
+            if best_row is not None:
+                st.success(f"""
+                **🎯 Primary Recommendation:** Operate Spiral 5 under **{best_condition_spiral5}** conditions
+                
+                **Expected Performance:**
+                - Solid Yield: {best_row['Solid Yield %']:.1f}%
+                - Middling Fraction: {best_row['Middling Fraction %']:.1f}%
+                - Performance Score: {best_row['Score']:.2f}
+                """)
+
+            st.warning("""
+            **⚠️ Critical Warning:** Avoid conditions that produce >30% middling fraction as this will:
+            - Create recycle loops
+            - Reduce overall plant efficiency  
+            - Increase operating costs
+            """)
 
             if correlation > 0.5:
-                st.warning("⚠️ **Strong positive correlation detected:** Higher yield tends to produce more middlings - careful optimization needed!")
-            elif correlation < -0.5:
-                st.success("✅ **Inverse relationship:** Higher yield conditions show lower middling production - optimal conditions exist!")
-            else:
-                st.info("ℹ️ **Moderate correlation:** Yield and middling can be balanced with proper parameter selection.")
+                st.info("**ℹ️ Optimization Strategy:** Focus on conditions in the bottom-right quadrant (high yield, low middling) of the trade-off chart.")
+            elif correlation < -0.3:
+                st.success("**✅ Good News:** Some conditions achieve both high yield and low middling - prioritize these operating points!")
 
     # Recommendations Tab
-    with tabs[4]:
+    with tabs[5]:
         with st.container():
             st.markdown("## 💡 Recommendations")
 
