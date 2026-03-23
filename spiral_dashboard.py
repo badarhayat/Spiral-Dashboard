@@ -637,34 +637,100 @@ def main():
                 "Equal feed distribution is assumed within each group. Performance differences reflect spiral settings, not feed variations."
             )
             
-            # Group A
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**Group A (Spirals {group_A})**")
-                group_a_data = all_perf_df[all_perf_df['Spiral'].isin(group_A)].sort_values('Score', ascending=False)
-                st.dataframe(group_a_data[['Spiral', 'Solid Yield %', 'Middling %', 'Score']])
-                if len(group_a_data) > 1:
-                    score_diff = group_a_data.iloc[0]['Score'] - group_a_data.iloc[-1]['Score']
-                    st.write(f"📊 Score range: {score_diff:.2f} (due to spiral settings)")
+            # Group A detailed comparison
+            st.markdown("#### Group A (Spirals 1–4) - Identical Feed Tank")
+            group_a_data = all_perf_df[all_perf_df['Spiral'].isin(group_A)].sort_values('Solid Yield %', ascending=False)
             
-            with col2:
-                st.markdown(f"**Group B (Spirals {group_B})**")
-                group_b_data = all_perf_df[all_perf_df['Spiral'].isin(group_B)].sort_values('Score', ascending=False)
-                st.dataframe(group_b_data[['Spiral', 'Solid Yield %', 'Middling %', 'Score']])
-                if len(group_b_data) > 1:
-                    score_diff = group_b_data.iloc[0]['Score'] - group_b_data.iloc[-1]['Score']
-                    st.write(f"📊 Score range: {score_diff:.2f} (due to spiral settings)")
+            if not group_a_data.empty:
+                best_a = group_a_data.iloc[0]
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🏆 Best Spiral (Group A)", f"Spiral {int(best_a['Spiral'])}", f"Yield: {best_a['Solid Yield %']:.1f}%")
+                with col2:
+                    avg_yield_a = group_a_data['Solid Yield %'].mean()
+                    st.metric("Average Yield", f"{avg_yield_a:.1f}%")
+                with col3:
+                    yield_range_a = group_a_data['Solid Yield %'].max() - group_a_data['Solid Yield %'].min()
+                    st.metric("Yield Range", f"{yield_range_a:.1f}%")
+                
+                st.dataframe(group_a_data[['Spiral', 'Solid Yield %', 'Middling %', 'Tailing %', 'Score']].reset_index(drop=True))
+                
+                # Comparison charts for Group A
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**Solid Yield Comparison**")
+                    yield_chart_a = group_a_data[['Spiral', 'Solid Yield %']].copy()
+                    yield_chart_a['Spiral'] = yield_chart_a['Spiral'].astype(str)
+                    fig = plot_bar(yield_chart_a, 'Spiral', 'Solid Yield %', 'Group A: Solid Yield %', 'Yield %')
+                    st.pyplot(fig, width='stretch')
+                
+                with col2:
+                    st.markdown("**Middling Comparison**")
+                    middle_chart_a = group_a_data[['Spiral', 'Middling %']].copy()
+                    middle_chart_a['Spiral'] = middle_chart_a['Spiral'].astype(str)
+                    fig = plot_bar(middle_chart_a, 'Spiral', 'Middling %', 'Group A: Middling %', 'Middling %')
+                    st.pyplot(fig, width='stretch')
+                
+                st.success(
+                    f"💡 **Insight:** These spirals (1–4) share identical feed from the same tank. "
+                    f"The performance differences (Yield: {yield_range_a:.1f}% range) reflect operational performance "
+                    f"differences in spiral settings, geometry, or water conditions—not feed variation."
+                )
+            
+            st.markdown("---")
+            
+            # Group B detailed comparison
+            st.markdown("#### Group B (Spirals 7–8) - Identical Feed Tank")
+            group_b_data = all_perf_df[all_perf_df['Spiral'].isin(group_B)].sort_values('Solid Yield %', ascending=False)
+            
+            if not group_b_data.empty:
+                best_b = group_b_data.iloc[0]
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🏆 Best Spiral (Group B)", f"Spiral {int(best_b['Spiral'])}", f"Yield: {best_b['Solid Yield %']:.1f}%")
+                with col2:
+                    avg_yield_b = group_b_data['Solid Yield %'].mean()
+                    st.metric("Average Yield", f"{avg_yield_b:.1f}%")
+                with col3:
+                    yield_range_b = group_b_data['Solid Yield %'].max() - group_b_data['Solid Yield %'].min()
+                    st.metric("Yield Range", f"{yield_range_b:.1f}%")
+                
+                st.dataframe(group_b_data[['Spiral', 'Solid Yield %', 'Middling %', 'Tailing %', 'Score']].reset_index(drop=True))
+                
+                # Comparison charts for Group B
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**Solid Yield Comparison**")
+                    yield_chart_b = group_b_data[['Spiral', 'Solid Yield %']].copy()
+                    yield_chart_b['Spiral'] = yield_chart_b['Spiral'].astype(str)
+                    fig = plot_bar(yield_chart_b, 'Spiral', 'Solid Yield %', 'Group B: Solid Yield %', 'Yield %')
+                    st.pyplot(fig, width='stretch')
+                
+                with col2:
+                    st.markdown("**Middling Comparison**")
+                    middle_chart_b = group_b_data[['Spiral', 'Middling %']].copy()
+                    middle_chart_b['Spiral'] = middle_chart_b['Spiral'].astype(str)
+                    fig = plot_bar(middle_chart_b, 'Spiral', 'Middling %', 'Group B: Middling %', 'Middling %')
+                    st.pyplot(fig, width='stretch')
+                
+                st.success(
+                    f"💡 **Insight:** These spirals (7–8) share identical feed from the same tank. "
+                    f"The performance differences (Yield: {yield_range_b:.1f}% range) reflect operational performance "
+                    f"differences in spiral settings, geometry, or water conditions—not feed variation."
+                )
+            
+            st.markdown("---")
             
             st.markdown(f"**Group C (Spirals {group_C}) - Recycle Circuit**")
             group_c_data = all_perf_df[all_perf_df['Spiral'].isin(group_C)].sort_values('Score', ascending=False)
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
                 st.dataframe(group_c_data[['Spiral', 'Solid Yield %', 'Middling %', 'Score']])
             with col2:
-                st.write(f"Feed source: Primary middlings + Recycle")
-                st.write(f"Critical: Minimize middling production to reduce recycle")
-            with col3:
-                st.write("")
+                st.write(f"**Feed source:** Primary middlings + Recycled middlings")
+                st.write(f"**Critical:** Minimize middling production to reduce recirculation")
 
             st.markdown("### Performance Insights")
             for idx, row in all_perf_df.iterrows():
