@@ -629,6 +629,65 @@ def main():
             fig = plot_bar(middling_data_spiral5, 'Condition', 'Middling Fraction %', 'Middling Fraction by Operating Condition - Spiral 5', 'Middling %')
             st.pyplot(fig, width='stretch')
 
+            st.markdown("#### Yield vs Middling Trade-off - Spiral 5")
+            # Create scatter plot
+            fig, ax = plt.subplots(figsize=(12, 8))
+            scatter_data = sens_df_summary_spiral5.copy()
+
+            # Create scatter plot
+            scatter = ax.scatter(scatter_data['Solid Yield %'], scatter_data['Middling Fraction %'],
+                               s=100, c=range(len(scatter_data)), cmap='viridis', alpha=0.8, edgecolors='black')
+
+            # Add condition labels
+            for i, row in scatter_data.iterrows():
+                ax.annotate(row['Condition'], (row['Solid Yield %'], row['Middling Fraction %']),
+                           xytext=(5, 5), textcoords='offset points', fontsize=10, fontweight='medium')
+
+            # Enhanced styling
+            ax.set_title('Yield vs Middling Trade-off Analysis - Spiral 5', fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+            ax.set_xlabel('Solid Yield %', fontsize=14, fontweight='medium', color='#34495e')
+            ax.set_ylabel('Middling Fraction %', fontsize=14, fontweight='medium', color='#34495e')
+
+            # Improve axis styling
+            plt.xticks(fontsize=12)
+            plt.yticks(fontsize=12)
+
+            # Clean grid and spines
+            ax.grid(True, alpha=0.3)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_linewidth(0.5)
+            ax.spines['bottom'].set_linewidth(0.5)
+
+            # Keep white background
+            ax.set_facecolor('#FFFFFF')
+
+            # Add colorbar
+            cbar = plt.colorbar(scatter, ax=ax)
+            cbar.set_label('Condition Rank (Best to Worst)', fontsize=12)
+
+            plt.tight_layout()
+            st.pyplot(fig, width='stretch')
+
+            # Add insights about the trade-off
+            st.markdown("#### Trade-off Analysis Insights")
+            best_yield = scatter_data['Solid Yield %'].max()
+            best_middling = scatter_data['Middling Fraction %'].min()
+            correlation = scatter_data['Solid Yield %'].corr(scatter_data['Middling Fraction %'])
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Highest Yield Condition", f"{best_yield:.1f}%")
+            with col2:
+                st.metric("Lowest Middling Condition", f"{best_middling:.1f}%")
+
+            if correlation > 0.5:
+                st.warning("⚠️ **Strong positive correlation detected:** Higher yield tends to produce more middlings - careful optimization needed!")
+            elif correlation < -0.5:
+                st.success("✅ **Inverse relationship:** Higher yield conditions show lower middling production - optimal conditions exist!")
+            else:
+                st.info("ℹ️ **Moderate correlation:** Yield and middling can be balanced with proper parameter selection.")
+
     # Recommendations Tab
     with tabs[4]:
         with st.container():
