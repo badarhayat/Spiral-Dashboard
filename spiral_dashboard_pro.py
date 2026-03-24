@@ -10,26 +10,27 @@ EFFECTIVE_HOURS = 11
 VALID_PRODUCTS = {'Concentrate', 'Middling', 'Tailings'}
 APP_ICON = '🏭'
 
-# ── Professional color palette ───────────────────────────────────────────────
+# ── Dark professional color palette ──────────────────────────────────────────
 COLORS = {
-    'primary':    '#1B4F72',   # deep navy
-    'accent':     '#2E86C1',   # corporate blue
-    'success':    '#1E8449',   # deep green
-    'warning':    '#D68910',   # amber
-    'danger':     '#C0392B',   # red
-    'info':       '#1A5276',   # dark blue
-    'light':      '#F0F4F8',   # off-white
-    'card_bg':    '#FFFFFF',
-    'text':       '#2C3E50',
-    'text_light': '#5D6D7E',
-    'border':     '#D5D8DC',
-    'gradient_1': '#1B4F72',
-    'gradient_2': '#2E86C1',
+    'primary':    '#38BDF8',   # sky blue accent
+    'accent':     '#0EA5E9',   # deeper blue
+    'success':    '#4ADE80',   # green
+    'warning':    '#FBBF24',   # amber
+    'danger':     '#F87171',   # red
+    'info':       '#818CF8',   # indigo
+    'bg':         '#0F172A',   # main background
+    'surface':    '#1E293B',   # card / panel
+    'surface2':   '#273549',   # elevated card
+    'border':     '#334155',   # border
+    'text':       '#F1F5F9',   # primary text
+    'text_muted': '#94A3B8',   # secondary text
+    'gradient_1': '#0F172A',
+    'gradient_2': '#1E3A5F',
 }
 
 CHART_COLORS = [
-    '#2E86C1', '#1E8449', '#D68910', '#C0392B',
-    '#8E44AD', '#1ABC9C', '#E67E22', '#95A5A6',
+    '#38BDF8', '#4ADE80', '#FBBF24', '#F87171',
+    '#C084FC', '#34D399', '#FB923C', '#94A3B8',
 ]
 
 # ── Global custom CSS ─────────────────────────────────────────────────────────
@@ -42,35 +43,38 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif !important;
 }
 
-/* ---------- Main container ---------- */
+/* ---------- Dark main background ---------- */
+.stApp {
+    background-color: #0F172A !important;
+}
+
 .main .block-container {
     padding: 1.5rem 2rem 3rem 2rem;
     max-width: 1400px;
+    background-color: #0F172A;
 }
 
 /* ---------- Page header ---------- */
 .pro-header {
-    background: linear-gradient(135deg, #1B4F72 0%, #2E86C1 100%);
-    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%);
+    padding: 1.2rem 1.8rem;
     border-radius: 12px;
     margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    box-shadow: 0 4px 20px rgba(27, 79, 114, 0.3);
+    border: 1px solid #334155;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .pro-header h1 {
-    color: #FFFFFF !important;
-    font-size: 1.8rem;
+    color: #F1F5F9 !important;
+    font-size: 1.6rem;
     font-weight: 700;
     margin: 0;
     line-height: 1.2;
 }
 
 .pro-header p {
-    color: rgba(255,255,255,0.85) !important;
-    font-size: 0.9rem;
+    color: #94A3B8 !important;
+    font-size: 0.85rem;
     margin: 0.2rem 0 0 0;
 }
 
@@ -83,79 +87,69 @@ html, body, [class*="css"] {
 }
 
 .kpi-card {
-    background: #FFFFFF;
+    background: #1E293B;
     border-radius: 12px;
     padding: 1.2rem 1.4rem;
-    border-left: 4px solid #2E86C1;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    border: 1px solid #334155;
+    border-left: 4px solid #38BDF8;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
     transition: transform 0.2s, box-shadow 0.2s;
-    position: relative;
-    overflow: hidden;
 }
 
 .kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
-}
-
-.kpi-card::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 60px; height: 60px;
-    border-radius: 0 12px 0 60px;
-    opacity: 0.06;
-    background: currentColor;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    background: #273549;
 }
 
 .kpi-card .kpi-icon {
-    font-size: 1.6rem;
+    font-size: 1.4rem;
     margin-bottom: 0.4rem;
     display: block;
 }
 
 .kpi-card .kpi-label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #5D6D7E;
+    color: #64748B;
     margin-bottom: 0.3rem;
 }
 
 .kpi-card .kpi-value {
-    font-size: 1.9rem;
+    font-size: 1.8rem;
     font-weight: 700;
     line-height: 1;
     margin-bottom: 0.2rem;
 }
 
 .kpi-card .kpi-unit {
-    font-size: 0.8rem;
-    color: #5D6D7E;
+    font-size: 0.78rem;
+    color: #64748B;
     font-weight: 500;
 }
 
-.kpi-blue  { border-left-color: #2E86C1; }
-.kpi-blue  .kpi-value { color: #2E86C1; }
-.kpi-green { border-left-color: #1E8449; }
-.kpi-green .kpi-value { color: #1E8449; }
-.kpi-red   { border-left-color: #C0392B; }
-.kpi-red   .kpi-value { color: #C0392B; }
-.kpi-amber { border-left-color: #D68910; }
-.kpi-amber .kpi-value { color: #D68910; }
-.kpi-purple{ border-left-color: #8E44AD; }
-.kpi-purple .kpi-value{ color: #8E44AD; }
+.kpi-blue   { border-left-color: #38BDF8; }
+.kpi-blue   .kpi-value { color: #38BDF8; }
+.kpi-green  { border-left-color: #4ADE80; }
+.kpi-green  .kpi-value { color: #4ADE80; }
+.kpi-red    { border-left-color: #F87171; }
+.kpi-red    .kpi-value { color: #F87171; }
+.kpi-amber  { border-left-color: #FBBF24; }
+.kpi-amber  .kpi-value { color: #FBBF24; }
+.kpi-purple { border-left-color: #C084FC; }
+.kpi-purple .kpi-value { color: #C084FC; }
 
 /* ---------- Section heading ---------- */
 .section-heading {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    color: #1B4F72;
-    border-bottom: 2px solid #D5D8DC;
+    color: #E2E8F0;
+    border-bottom: 1px solid #334155;
     padding-bottom: 0.5rem;
     margin: 1.5rem 0 1rem 0;
 }
@@ -163,17 +157,17 @@ html, body, [class*="css"] {
 /* ---------- Status badge ---------- */
 .badge {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
+    padding: 0.2rem 0.65rem;
     border-radius: 20px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
-.badge-success { background: #D5F5E3; color: #1E8449; }
-.badge-warning { background: #FDEBD0; color: #D68910; }
-.badge-danger  { background: #FADBD8; color: #C0392B; }
-.badge-info    { background: #D6EAF8; color: #1A5276; }
+.badge-success { background: rgba(74,222,128,0.15); color: #4ADE80; border: 1px solid #4ADE80; }
+.badge-warning { background: rgba(251,191,36,0.15);  color: #FBBF24; border: 1px solid #FBBF24; }
+.badge-danger  { background: rgba(248,113,113,0.15); color: #F87171; border: 1px solid #F87171; }
+.badge-info    { background: rgba(129,140,248,0.15); color: #818CF8; border: 1px solid #818CF8; }
 
 /* ---------- Alert boxes ---------- */
 .pro-alert {
@@ -181,123 +175,119 @@ html, body, [class*="css"] {
     padding: 0.9rem 1.2rem;
     margin: 0.6rem 0;
     border-left: 4px solid;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
 }
-.pro-alert-danger  { background: #FADBD8; border-color: #C0392B; color: #7B241C; }
-.pro-alert-warning { background: #FDEBD0; border-color: #D68910; color: #7D6608; }
-.pro-alert-success { background: #D5F5E3; border-color: #1E8449; color: #1D6A39; }
-.pro-alert-info    { background: #D6EAF8; border-color: #2E86C1; color: #1A5276; }
+.pro-alert-danger  { background: rgba(248,113,113,0.1); border-color: #F87171; color: #FCA5A5; }
+.pro-alert-warning { background: rgba(251,191,36,0.1);  border-color: #FBBF24; color: #FDE68A; }
+.pro-alert-success { background: rgba(74,222,128,0.1);  border-color: #4ADE80; color: #86EFAC; }
+.pro-alert-info    { background: rgba(129,140,248,0.1); border-color: #818CF8; color: #A5B4FC; }
 .pro-alert strong  { font-weight: 700; }
 
 /* ---------- Info panel ---------- */
 .info-panel {
-    background: #EBF5FB;
-    border: 1px solid #AED6F1;
+    background: rgba(56,189,248,0.08);
+    border: 1px solid rgba(56,189,248,0.25);
     border-radius: 8px;
-    padding: 0.9rem 1.2rem;
-    font-size: 0.88rem;
-    color: #1A5276;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.85rem;
+    color: #7DD3FC;
     margin: 0.8rem 0;
-}
-
-/* ---------- Data table wrapper ---------- */
-.pro-table-wrap {
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid #D5D8DC;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
 }
 
 /* ---------- Sidebar ---------- */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #1B4F72 0%, #1A5276 100%) !important;
+    background: linear-gradient(180deg, #0B1120 0%, #0F172A 100%) !important;
+    border-right: 1px solid #1E293B !important;
 }
 
 [data-testid="stSidebar"] * {
-    color: #ECF0F1 !important;
+    color: #CBD5E1 !important;
 }
 
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stSlider label {
-    color: #BDC3C7 !important;
-    font-size: 0.8rem !important;
+    color: #64748B !important;
+    font-size: 0.78rem !important;
     font-weight: 600 !important;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
 }
 
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 {
-    color: #FFFFFF !important;
+    color: #F1F5F9 !important;
 }
 
 .sidebar-brand {
     text-align: center;
     padding: 1.2rem 0.5rem 0.8rem;
-    border-bottom: 1px solid rgba(255,255,255,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
     margin-bottom: 1rem;
 }
 
 .sidebar-brand h2 {
-    color: #FFFFFF !important;
+    color: #F1F5F9 !important;
     font-size: 1rem;
     font-weight: 700;
-    margin: 0.5rem 0 0.1rem;
+    margin: 0.4rem 0 0.1rem;
 }
 
 .sidebar-brand p {
-    color: rgba(255,255,255,0.65) !important;
+    color: #64748B !important;
     font-size: 0.72rem;
     margin: 0;
 }
 
 /* ---------- Tabs ---------- */
 .stTabs [data-baseweb="tab-list"] {
-    background: #F0F4F8;
+    background: #1E293B;
     border-radius: 10px;
     padding: 4px;
     gap: 4px;
+    border: 1px solid #334155;
 }
 
 .stTabs [data-baseweb="tab"] {
     border-radius: 8px !important;
-    padding: 0.5rem 1.2rem !important;
+    padding: 0.45rem 1rem !important;
     font-weight: 600 !important;
-    font-size: 0.85rem !important;
-    color: #5D6D7E !important;
+    font-size: 0.82rem !important;
+    color: #64748B !important;
     background: transparent !important;
     border: none !important;
 }
 
 .stTabs [aria-selected="true"] {
-    background: #FFFFFF !important;
-    color: #1B4F72 !important;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.1) !important;
+    background: #273549 !important;
+    color: #38BDF8 !important;
+    box-shadow: none !important;
+    border: 1px solid #334155 !important;
 }
 
 /* ---------- Metrics ---------- */
 [data-testid="stMetric"] {
-    background: #FFFFFF;
+    background: #1E293B;
     border-radius: 10px;
     padding: 0.8rem 1rem;
-    border: 1px solid #D5D8DC;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    border: 1px solid #334155;
 }
 
 [data-testid="stMetricLabel"] {
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
     font-weight: 600 !important;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #5D6D7E !important;
+    color: #64748B !important;
 }
 
 [data-testid="stMetricValue"] {
-    font-size: 1.5rem !important;
+    font-size: 1.4rem !important;
     font-weight: 700 !important;
-    color: #1B4F72 !important;
+    color: #F1F5F9 !important;
 }
+
+[data-testid="stMetricDelta"] svg { display: none; }
 
 /* ---------- Buttons ---------- */
 .stButton > button {
@@ -305,23 +295,23 @@ html, body, [class*="css"] {
     font-weight: 600 !important;
     font-size: 0.875rem !important;
     padding: 0.5rem 1.2rem !important;
-    border: none !important;
-    background: linear-gradient(135deg, #1B4F72, #2E86C1) !important;
-    color: #FFFFFF !important;
-    box-shadow: 0 2px 8px rgba(27, 79, 114, 0.3) !important;
+    border: 1px solid #334155 !important;
+    background: #1E293B !important;
+    color: #38BDF8 !important;
+    box-shadow: none !important;
     transition: all 0.2s !important;
 }
 
 .stButton > button:hover {
-    box-shadow: 0 4px 14px rgba(27, 79, 114, 0.45) !important;
-    transform: translateY(-1px) !important;
+    background: #273549 !important;
+    border-color: #38BDF8 !important;
 }
 
 /* ---------- File uploader ---------- */
 [data-testid="stFileUploader"] {
-    border: 2px dashed #AED6F1 !important;
+    border: 1px dashed #334155 !important;
     border-radius: 10px !important;
-    background: #EBF5FB !important;
+    background: #1E293B !important;
     padding: 0.5rem !important;
 }
 
@@ -329,39 +319,65 @@ html, body, [class*="css"] {
 .stDownloadButton > button {
     border-radius: 8px !important;
     font-weight: 600 !important;
-    background: #1E8449 !important;
-    color: #FFFFFF !important;
-    border: none !important;
-    box-shadow: 0 2px 8px rgba(30,132,73,0.3) !important;
+    background: #1E293B !important;
+    color: #4ADE80 !important;
+    border: 1px solid #4ADE80 !important;
 }
 
 /* ---------- Expander ---------- */
 .streamlit-expanderHeader {
     font-weight: 600 !important;
-    font-size: 0.9rem !important;
-    color: #1B4F72 !important;
-    background: #F0F4F8 !important;
+    font-size: 0.88rem !important;
+    color: #CBD5E1 !important;
+    background: #1E293B !important;
     border-radius: 8px !important;
+    border: 1px solid #334155 !important;
 }
 
-/* ---------- Caption ---------- */
-.stCaption {
+/* ---------- Caption / text ---------- */
+.stCaption, .stCaption p {
     font-size: 0.78rem !important;
-    color: #7F8C8D !important;
+    color: #64748B !important;
+}
+
+p, label, .stMarkdown p {
+    color: #CBD5E1 !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #F1F5F9 !important;
 }
 
 /* ---------- Divider ---------- */
 hr {
     border: none !important;
-    border-top: 1px solid #D5D8DC !important;
+    border-top: 1px solid #1E293B !important;
     margin: 1.5rem 0 !important;
 }
 
-/* ---------- Success / Warning / Error containers ---------- */
-.stSuccess { border-radius: 8px !important; }
-.stWarning { border-radius: 8px !important; }
-.stError   { border-radius: 8px !important; }
-.stInfo    { border-radius: 8px !important; }
+/* ---------- Alert containers ---------- */
+.stSuccess, .stWarning, .stError, .stInfo { border-radius: 8px !important; }
+
+/* ---------- Dataframe / table ---------- */
+.stDataFrame { background: #1E293B !important; border-radius: 10px; overflow: hidden; }
+
+/* ---------- Selectbox / input ---------- */
+[data-testid="stSelectbox"] > div > div {
+    background: #1E293B !important;
+    border: 1px solid #334155 !important;
+    color: #F1F5F9 !important;
+    border-radius: 8px !important;
+}
+
+/* ---------- Slider ---------- */
+[data-testid="stSlider"] .st-bk { background: #334155 !important; }
+[data-testid="stSlider"] .st-cn { background: #38BDF8 !important; }
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0F172A; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
 </style>
 """
 
@@ -429,31 +445,33 @@ def make_bar_chart(data, x, y, title, ylabel, colors=None):
             marker=dict(
                 color=bar_colors,
                 line=dict(width=0),
-                opacity=0.9,
+                opacity=0.85,
             ),
             text=data[y].round(2),
             textposition='outside',
-            textfont=dict(size=11, color='#2C3E50'),
+            textfont=dict(size=11, color='#94A3B8'),
         )
     )
     fig.update_layout(
-        title=dict(text=title, font=dict(size=16, color='#1B4F72', family='Inter'), x=0),
+        title=dict(text=title, font=dict(size=15, color='#E2E8F0', family='Inter'), x=0),
         xaxis=dict(
-            title=dict(text=x, font=dict(size=13, color='#5D6D7E')),
+            title=dict(text=x, font=dict(size=12, color='#64748B')),
             showgrid=False,
-            tickfont=dict(size=11),
+            tickfont=dict(size=11, color='#94A3B8'),
+            linecolor='#334155',
         ),
         yaxis=dict(
-            title=dict(text=ylabel, font=dict(size=13, color='#5D6D7E')),
+            title=dict(text=ylabel, font=dict(size=12, color='#64748B')),
             showgrid=True,
-            gridcolor='#ECF0F1',
+            gridcolor='#1E293B',
             zeroline=False,
+            tickfont=dict(size=11, color='#94A3B8'),
         ),
-        plot_bgcolor='#FAFBFC',
-        paper_bgcolor='#FFFFFF',
+        plot_bgcolor='#0F172A',
+        paper_bgcolor='#1E293B',
         margin=dict(l=40, r=20, t=50, b=60),
-        height=380,
-        font=dict(family='Inter'),
+        height=360,
+        font=dict(family='Inter', color='#94A3B8'),
         showlegend=False,
     )
     return fig
@@ -461,38 +479,39 @@ def make_bar_chart(data, x, y, title, ylabel, colors=None):
 
 def make_gauge(value, title, max_val=100, suffix="%", color=None):
     if color is None:
-        color = '#2E86C1' if value >= 55 else ('#D68910' if value >= 45 else '#C0392B')
+        color = '#4ADE80' if value >= 55 else ('#FBBF24' if value >= 45 else '#F87171')
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number+delta",
             value=value,
-            title=dict(text=title, font=dict(size=14, color='#1B4F72')),
+            title=dict(text=title, font=dict(size=14, color='#94A3B8')),
             number=dict(suffix=suffix, font=dict(size=28, color=color)),
             gauge=dict(
-                axis=dict(range=[0, max_val], tickfont=dict(size=10)),
+                axis=dict(range=[0, max_val], tickfont=dict(size=10, color='#64748B'),
+                          tickcolor='#334155', linecolor='#334155'),
                 bar=dict(color=color, thickness=0.7),
-                bgcolor='#F0F4F8',
+                bgcolor='#1E293B',
                 borderwidth=0,
                 steps=[
-                    dict(range=[0, max_val * 0.45], color='#FADBD8'),
-                    dict(range=[max_val * 0.45, max_val * 0.55], color='#FDEBD0'),
-                    dict(range=[max_val * 0.55, max_val], color='#D5F5E3'),
+                    dict(range=[0, max_val * 0.45], color='rgba(248,113,113,0.15)'),
+                    dict(range=[max_val * 0.45, max_val * 0.55], color='rgba(251,191,36,0.15)'),
+                    dict(range=[max_val * 0.55, max_val], color='rgba(74,222,128,0.15)'),
                 ],
             ),
         )
     )
     fig.update_layout(
-        height=220,
+        height=240,
         margin=dict(l=20, r=20, t=40, b=10),
-        paper_bgcolor='#FFFFFF',
-        font=dict(family='Inter'),
+        paper_bgcolor='#1E293B',
+        font=dict(family='Inter', color='#94A3B8'),
     )
     return fig
 
 
 def make_line_chart(df_chart, x_col, y_cols, title):
     fig = go.Figure()
-    palette = ['#2E86C1', '#1E8449', '#C0392B', '#D68910']
+    palette = ['#38BDF8', '#4ADE80', '#F87171', '#FBBF24']
     for i, col in enumerate(y_cols):
         fig.add_trace(
             go.Scatter(
@@ -505,15 +524,16 @@ def make_line_chart(df_chart, x_col, y_cols, title):
             )
         )
     fig.update_layout(
-        title=dict(text=title, font=dict(size=15, color='#1B4F72'), x=0),
-        xaxis=dict(showgrid=False, tickfont=dict(size=10)),
-        yaxis=dict(showgrid=True, gridcolor='#ECF0F1', zeroline=False),
-        plot_bgcolor='#FAFBFC',
-        paper_bgcolor='#FFFFFF',
+        title=dict(text=title, font=dict(size=14, color='#E2E8F0'), x=0),
+        xaxis=dict(showgrid=False, tickfont=dict(size=10, color='#94A3B8'), linecolor='#334155'),
+        yaxis=dict(showgrid=True, gridcolor='#1E293B', zeroline=False, tickfont=dict(size=10, color='#94A3B8')),
+        plot_bgcolor='#0F172A',
+        paper_bgcolor='#1E293B',
         margin=dict(l=40, r=20, t=50, b=40),
         height=320,
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-        font=dict(family='Inter'),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1,
+                    font=dict(color='#94A3B8'), bgcolor='rgba(0,0,0,0)'),
+        font=dict(family='Inter', color='#94A3B8'),
     )
     return fig
 
@@ -699,10 +719,10 @@ def main():
         st.markdown(
             """
             <div style="padding:0.6rem 0">
-                <h1 style="margin:0;font-size:1.7rem;font-weight:800;color:#1B4F72;">
+                <h1 style="margin:0;font-size:1.7rem;font-weight:800;color:#F1F5F9;">
                     Spiral Concentrator Analysis
                 </h1>
-                <p style="margin:0.2rem 0 0;color:#5D6D7E;font-size:0.9rem;">
+                <p style="margin:0.2rem 0 0;color:#94A3B8;font-size:0.9rem;">
                     Enterprise-grade solids-based spiral performance analytics
                 </p>
             </div>
@@ -917,8 +937,9 @@ def main():
     best_group = max(group_scores, key=lambda k: group_scores[k] if pd.notna(group_scores[k]) else float('-inf'))
 
     # ── MAIN PAGE ─────────────────────────────────────────────────────────────
-    section_heading("📊", "Plant KPIs — Live Summary")
 
+    # Always-visible: slim KPI strip
+    st.markdown("<br>", unsafe_allow_html=True)
     cols = st.columns(4)
     with cols[0]:
         kpi_card("Production", f"{conc_day:.1f}", "tons/day", "kpi-blue", "📦")
@@ -939,263 +960,261 @@ def main():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Recovery gauge + mass balance in a row
-    col_gauge, col_mb = st.columns([1, 2])
-    with col_gauge:
-        st.plotly_chart(make_gauge(recovery, "Recovery Rate"), use_container_width=True)
-    with col_mb:
-        section_heading("⚖️", "Mass Balance")
-        info_panel("Feed is calculated from final outputs (Concentrate + Tailing). Middling is internal recycle.")
-        mb_cols = st.columns(3)
-        with mb_cols[0]:
-            st.metric("Feed (TPH)", f"{plant_feed_tph:.1f}")
-            st.metric("Feed (TPD)", f"{plant_feed_daily:.2f}")
-        with mb_cols[1]:
-            st.metric("Concentrate (TPH)", f"{concentrate_tph:.1f}")
-            st.metric("Concentrate (TPD)", f"{concentrate_daily:.2f}")
-        with mb_cols[2]:
-            st.metric("Tailing (TPH)", f"{tailing_tph:.1f}")
-            st.metric("Tailing (TPD)", f"{tailing_daily:.2f}")
-
-    # Loss summary
-    loss_pct = (tailing_solids_total / plant_feed * 100) if plant_feed > 0 else 0
-    section_heading("📉", "Loss Summary")
-    loss_cols = st.columns(2)
-    with loss_cols[0]:
-        st.metric("Tailing Loss %", f"{loss_pct:.1f}%")
-    with loss_cols[1]:
-        st.caption(f"Tailing = {tailing_daily:.2f} TPD  ({loss_pct:.1f}% of plant feed)")
-
-    # ── Alerts ────────────────────────────────────────────────────────────────
-    section_heading("🚨", "Alerts & Recommendations")
-
-    alerts = []
-    if recovery < 45:
-        alerts.append(("danger", "🔴 LOW RECOVERY", "Recovery below 45%. Check feed conditions."))
-    elif recovery < 55:
-        alerts.append(("warning", "🟡 MODERATE RECOVERY", "Recovery can be improved."))
-
-    if tail_day > 90:
-        alerts.append(("danger", "🔴 HIGH LOSS", "Too much material going to tailing."))
-    elif tail_day > 70:
-        alerts.append(("warning", "🟡 ELEVATED LOSS", "Monitor tailing losses."))
-
-    mb_error = (abs(feed_hr - (conc_hr + tail_hr)) / feed_hr * 100) if feed_hr > 0 else 0
-    if mb_error > 5:
-        alerts.append(("danger", "🔴 MASS BALANCE ERROR", "Check calculations / data."))
-    elif mb_error > 2:
-        alerts.append(("warning", "🟡 MASS BALANCE WARNING", "Minor mismatch detected."))
-
-    for _, row in all_perf_df.iterrows():
-        spiral = int(row['Spiral'])
-        if row['Middling %'] > 40:
-            alerts.append(("danger", f"🔴 Spiral {spiral}", "High middling → recycle overload"))
-        elif row['Middling %'] > 30:
-            alerts.append(("warning", f"🟡 Spiral {spiral}", "Moderate middling"))
-        if row['Tailing %'] > 35:
-            alerts.append(("danger", f"🔴 Spiral {spiral}", "High loss to tailing"))
-
-    alerts = alerts[:4]
-    if alerts:
-        for variant, title, msg in alerts:
-            pro_alert(title, msg, variant)
-    else:
-        st.markdown('<div class="pro-alert pro-alert-success">✅ <strong>All systems nominal</strong> — No critical alerts detected.</div>', unsafe_allow_html=True)
-
-    # Recovery recommendation
-    if recovery < 45:
-        st.markdown(
-            f"""<div class="pro-alert pro-alert-danger">
-            <strong>🔴 LOW RECOVERY — Recommended Action:</strong><br>
-            Adjust Spiral 1: Feed Solids {best_s1['feed_solids']:.1f}% · Splitter: {best_s1['splitter']}<br>
-            <em>This condition gave highest concentrate recovery in sensitivity analysis.</em>
-            </div>""",
-            unsafe_allow_html=True,
-        )
-
-    if (all_perf_df['Middling %'] > 40).any():
-        st.markdown(
-            f"""<div class="pro-alert pro-alert-warning">
-            <strong>🟡 HIGH RECYCLE LOAD — Optimize Spiral 5:</strong><br>
-            Feed Solids {best_s5['feed_solids']:.1f}% · Splitter: {best_s5['splitter']}<br>
-            <em>This condition minimizes middling and improves cleaning efficiency.</em>
-            </div>""",
-            unsafe_allow_html=True,
-        )
-
-    if tail_day > 90:
-        st.markdown(
-            f"""<div class="pro-alert pro-alert-danger">
-            <strong>🔴 HIGH LOSS TO TAILING — Recommended Action:</strong><br>
-            Improve primary recovery (Spiral 1): Feed Solids {best_s1['feed_solids']:.1f}% · Splitter: {best_s1['splitter']}
-            </div>""",
-            unsafe_allow_html=True,
-        )
-
-    # ── What-If Simulation ────────────────────────────────────────────────────
-    section_heading("🔮", "What-If Production Simulation")
-
-    current_feed  = feed_day
-    current_conc  = conc_day
-    best_yield_s1 = best_s1['yield_conc']
-    new_conc      = current_feed * (best_yield_s1 / 100)
-    gain          = new_conc - current_conc
-
-    sim_cols = st.columns(3)
-    with sim_cols[0]:
-        st.metric("Current Production", f"{current_conc:.2f} TPD")
-    with sim_cols[1]:
-        st.metric("Projected Production", f"{new_conc:.2f} TPD", delta=f"+{gain:.2f} TPD" if gain > 0 else f"{gain:.2f} TPD")
-    with sim_cols[2]:
-        st.metric("Potential Gain", f"{gain:.2f} TPD")
-
-    if gain > 0:
-        st.success(f"📈 Production could increase by **{gain:.2f} tons/day** by optimizing Spiral 1 settings.")
-    else:
-        st.info("Current settings already near optimal for Spiral 1.")
-
-    info_panel(
-        f"Simulation: Feed constant at {current_feed:.2f} TPD — "
-        f"New yield from sensitivity: {best_yield_s1:.2f}% — Spiral 1 settings only."
-    )
-
-    best_yield_s5       = best_s5['yield_conc']
-    combined_yield      = (best_yield_s1 + best_yield_s5) / 2
-    new_conc_combined   = current_feed * (combined_yield / 100)
-    gain_combined       = new_conc_combined - current_conc
-
-    with st.expander("🔎 Full optimisation comparison"):
-        sim_data = pd.DataFrame({
-            'Scenario': ['Current', 'Spiral 1 Optimised', 'Full Optimisation'],
-            'Concentrate TPD': [current_conc, new_conc, new_conc_combined],
-        })
-        fig = make_bar_chart(sim_data, 'Scenario', 'Concentrate TPD', 'Production Scenarios', 'Concentrate (TPD)')
-        st.plotly_chart(fig, use_container_width=True)
-
-    # ── Historical Tracking ───────────────────────────────────────────────────
-    section_heading("📅", "Daily Production Tracking")
-
-    today    = date.today()
-    new_date = pd.to_datetime(today).normalize()
-    new_data = pd.DataFrame([{
-        "Date": new_date,
-        "Feed_TPD": feed_day,
-        "Concentrate_TPD": conc_day,
-        "Tailing_TPD": tail_day,
-        "Recovery": recovery,
-    }])
-
-    history_path    = "plant_history.csv"
-    history_columns = ["Date", "Feed_TPD", "Concentrate_TPD", "Tailing_TPD", "Recovery"]
-
-    try:
-        df_history = pd.read_csv(history_path)
-    except (FileNotFoundError, OSError):
-        df_history = pd.DataFrame(columns=history_columns)
-
-    if not df_history.empty:
-        df_history['Date'] = pd.to_datetime(df_history['Date']).dt.normalize()
-
-    if (not df_history.empty) and (df_history['Date'] == new_date).any():
-        st.warning("⚠️ Data for today already exists and will be overwritten on save.")
-
-    if st.button("💾 Save Today's Data"):
-        existing = df_history.copy()
-        if not existing.empty:
-            existing['Date'] = pd.to_datetime(existing['Date']).dt.normalize()
-            existing = existing[existing['Date'] != new_date]
-        df_history = pd.concat([existing, new_data], ignore_index=True)
-        df_history = df_history.drop_duplicates(subset=['Date'], keep='last')
-        df_history = df_history.sort_values(by='Date').reset_index(drop=True)
-        save_df = df_history.copy()
-        save_df['Date'] = pd.to_datetime(save_df['Date']).dt.strftime('%Y-%m-%d')
-        save_df.to_csv(history_path, index=False)
-        st.success("✅ Daily data saved successfully.")
-
-    if not df_history.empty:
-        df_history['Date'] = pd.to_datetime(df_history['Date'])
-
-        fig_trend = make_line_chart(
-            df_history, 'Date',
-            ['Feed_TPD', 'Concentrate_TPD', 'Tailing_TPD'],
-            'Daily Production Trend',
-        )
-        st.plotly_chart(fig_trend, use_container_width=True)
-
-        # Monthly aggregates
-        df_history['Month'] = df_history['Date'].dt.to_period('M')
-        monthly_total = df_history.groupby('Month')['Concentrate_TPD'].sum().reset_index()
-        monthly_total['Month'] = monthly_total['Month'].astype(str)
-        monthly_avg = df_history.groupby('Month')['Concentrate_TPD'].mean().reset_index()
-        monthly_avg['Month'] = monthly_avg['Month'].astype(str)
-
-        hist_col1, hist_col2 = st.columns(2)
-        with hist_col1:
-            fig_mt = make_bar_chart(monthly_total, 'Month', 'Concentrate_TPD', 'Monthly Production (tons)', 'Concentrate (tons)')
-            st.plotly_chart(fig_mt, use_container_width=True)
-        with hist_col2:
-            fig_ma = make_bar_chart(monthly_avg, 'Month', 'Concentrate_TPD', 'Monthly Avg Production (TPD)', 'Concentrate (TPD)')
-            st.plotly_chart(fig_ma, use_container_width=True)
-
-        # Yearly aggregates
-        df_history['Year'] = df_history['Date'].dt.year
-        yearly_total = df_history.groupby('Year')['Concentrate_TPD'].sum().reset_index()
-        yearly_avg   = df_history.groupby('Year')['Concentrate_TPD'].mean().reset_index()
-
-        yr_col1, yr_col2 = st.columns(2)
-        with yr_col1:
-            fig_yt = make_bar_chart(yearly_total, 'Year', 'Concentrate_TPD', 'Yearly Production (tons)', 'Concentrate (tons)')
-            st.plotly_chart(fig_yt, use_container_width=True)
-        with yr_col2:
-            fig_ya = make_bar_chart(yearly_avg, 'Year', 'Concentrate_TPD', 'Yearly Avg Production (TPD)', 'Concentrate (TPD)')
-            st.plotly_chart(fig_ya, use_container_width=True)
-
-        avg_recovery = df_history['Recovery'].mean()
-        st.metric("📊 Average Recovery (All Time)", f"{avg_recovery:.1f}%")
-
-        selected_range = st.date_input(
-            "📅 Filter by Date Range",
-            [df_history['Date'].min().date(), df_history['Date'].max().date()],
-        )
-        if isinstance(selected_range, (list, tuple)) and len(selected_range) == 2:
-            start_date, end_date = selected_range
-            filtered = df_history[
-                (df_history['Date'] >= pd.to_datetime(start_date)) &
-                (df_history['Date'] <= pd.to_datetime(end_date))
-            ]
-            if not filtered.empty:
-                fig_fil = make_line_chart(filtered, 'Date', ['Concentrate_TPD'], 'Filtered Production')
-                st.plotly_chart(fig_fil, use_container_width=True)
-            else:
-                st.warning("No data in selected date range.")
-
-        with st.expander("🔎 Raw History Data"):
-            st.dataframe(df_history, hide_index=True, use_container_width=True)
-
-        st.download_button(
-            "⬇️  Download Historical Report",
-            df_history.to_csv(index=False),
-            file_name="plant_report.csv",
-            mime="text/csv",
-        )
-    else:
-        info_panel("No historical data yet. Click 'Save Today's Data' to start tracking.")
-
-    # ── Analysis Tabs ─────────────────────────────────────────────────────────
-    st.markdown("<br>", unsafe_allow_html=True)
-    tabs = st.tabs([
+    # ── Main navigation tabs ──────────────────────────────────────────────────
+    main_tabs = st.tabs([
+        "📊 Overview",
+        "🔮 Production",
         "🔩 Spiral Performance",
         "💧 Feed & Hydraulics",
         "♻️ Recycle Analysis",
         "🔬 Sensitivity Analysis",
     ])
 
-    # ── Tab 1: Spiral Performance ─────────────────────────────────────────────
-    with tabs[0]:
+    # Tab 1 — Overview
+    with main_tabs[0]:
+        col_gauge, col_mb = st.columns([1, 2])
+        with col_gauge:
+            st.plotly_chart(make_gauge(recovery, "Recovery Rate"), use_container_width=True)
+        with col_mb:
+            section_heading("⚖️", "Mass Balance")
+            info_panel("Feed is calculated from final outputs (Concentrate + Tailing). Middling is internal recycle.")
+            mb_cols = st.columns(3)
+            with mb_cols[0]:
+                st.metric("Feed (TPH)", f"{plant_feed_tph:.1f}")
+                st.metric("Feed (TPD)", f"{plant_feed_daily:.2f}")
+            with mb_cols[1]:
+                st.metric("Concentrate (TPH)", f"{concentrate_tph:.1f}")
+                st.metric("Concentrate (TPD)", f"{concentrate_daily:.2f}")
+            with mb_cols[2]:
+                st.metric("Tailing (TPH)", f"{tailing_tph:.1f}")
+                st.metric("Tailing (TPD)", f"{tailing_daily:.2f}")
+
+        loss_pct = (tailing_solids_total / plant_feed * 100) if plant_feed > 0 else 0
+        section_heading("📉", "Loss Summary")
+        loss_cols = st.columns(2)
+        with loss_cols[0]:
+            st.metric("Tailing Loss %", f"{loss_pct:.1f}%")
+        with loss_cols[1]:
+            st.caption(f"Tailing = {tailing_daily:.2f} TPD  ({loss_pct:.1f}% of plant feed)")
+
+        section_heading("🚨", "Alerts & Recommendations")
+
+        alerts = []
+        if recovery < 45:
+            alerts.append(("danger", "🔴 LOW RECOVERY", "Recovery below 45%. Check feed conditions."))
+        elif recovery < 55:
+            alerts.append(("warning", "🟡 MODERATE RECOVERY", "Recovery can be improved."))
+
+        if tail_day > 90:
+            alerts.append(("danger", "🔴 HIGH LOSS", "Too much material going to tailing."))
+        elif tail_day > 70:
+            alerts.append(("warning", "🟡 ELEVATED LOSS", "Monitor tailing losses."))
+
+        mb_error = (abs(feed_hr - (conc_hr + tail_hr)) / feed_hr * 100) if feed_hr > 0 else 0
+        if mb_error > 5:
+            alerts.append(("danger", "🔴 MASS BALANCE ERROR", "Check calculations / data."))
+        elif mb_error > 2:
+            alerts.append(("warning", "🟡 MASS BALANCE WARNING", "Minor mismatch detected."))
+
+        for _, row in all_perf_df.iterrows():
+            spiral_num = int(row['Spiral'])
+            if row['Middling %'] > 40:
+                alerts.append(("danger", f"🔴 Spiral {spiral_num}", "High middling → recycle overload"))
+            elif row['Middling %'] > 30:
+                alerts.append(("warning", f"🟡 Spiral {spiral_num}", "Moderate middling"))
+            if row['Tailing %'] > 35:
+                alerts.append(("danger", f"🔴 Spiral {spiral_num}", "High loss to tailing"))
+
+        alerts = alerts[:4]
+        if alerts:
+            for variant, alert_title, msg in alerts:
+                pro_alert(alert_title, msg, variant)
+        else:
+            st.markdown('<div class="pro-alert pro-alert-success">✅ <strong>All systems nominal</strong> — No critical alerts detected.</div>', unsafe_allow_html=True)
+
+        if recovery < 45:
+            st.markdown(
+                f"""<div class="pro-alert pro-alert-danger">
+                <strong>🔴 LOW RECOVERY — Recommended Action:</strong><br>
+                Adjust Spiral 1: Feed Solids {best_s1['feed_solids']:.1f}% · Splitter: {best_s1['splitter']}<br>
+                <em>This condition gave highest concentrate recovery in sensitivity analysis.</em>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+        if (all_perf_df['Middling %'] > 40).any():
+            st.markdown(
+                f"""<div class="pro-alert pro-alert-warning">
+                <strong>🟡 HIGH RECYCLE LOAD — Optimize Spiral 5:</strong><br>
+                Feed Solids {best_s5['feed_solids']:.1f}% · Splitter: {best_s5['splitter']}<br>
+                <em>This condition minimizes middling and improves cleaning efficiency.</em>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+        if tail_day > 90:
+            st.markdown(
+                f"""<div class="pro-alert pro-alert-danger">
+                <strong>🔴 HIGH LOSS TO TAILING — Recommended Action:</strong><br>
+                Improve primary recovery (Spiral 1): Feed Solids {best_s1['feed_solids']:.1f}% · Splitter: {best_s1['splitter']}
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+    # Tab 2 — Production
+    with main_tabs[1]:
+        section_heading("🔮", "What-If Production Simulation")
+
+        current_feed  = feed_day
+        current_conc  = conc_day
+        best_yield_s1 = best_s1['yield_conc']
+        new_conc      = current_feed * (best_yield_s1 / 100)
+        gain          = new_conc - current_conc
+
+        sim_cols = st.columns(3)
+        with sim_cols[0]:
+            st.metric("Current Production", f"{current_conc:.2f} TPD")
+        with sim_cols[1]:
+            st.metric("Projected Production", f"{new_conc:.2f} TPD", delta=f"+{gain:.2f} TPD" if gain > 0 else f"{gain:.2f} TPD")
+        with sim_cols[2]:
+            st.metric("Potential Gain", f"{gain:.2f} TPD")
+
+        if gain > 0:
+            st.success(f"📈 Production could increase by **{gain:.2f} tons/day** by optimizing Spiral 1 settings.")
+        else:
+            st.info("Current settings already near optimal for Spiral 1.")
+
+        info_panel(
+            f"Simulation: Feed constant at {current_feed:.2f} TPD — "
+            f"New yield from sensitivity: {best_yield_s1:.2f}% — Spiral 1 settings only."
+        )
+
+        best_yield_s5     = best_s5['yield_conc']
+        combined_yield    = (best_yield_s1 + best_yield_s5) / 2
+        new_conc_combined = current_feed * (combined_yield / 100)
+        gain_combined     = new_conc_combined - current_conc
+
+        with st.expander("🔎 Full optimisation comparison"):
+            sim_data = pd.DataFrame({
+                'Scenario': ['Current', 'Spiral 1 Optimised', 'Full Optimisation'],
+                'Concentrate TPD': [current_conc, new_conc, new_conc_combined],
+            })
+            fig = make_bar_chart(sim_data, 'Scenario', 'Concentrate TPD', 'Production Scenarios', 'Concentrate (TPD)')
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        section_heading("📅", "Daily Production Tracking")
+
+        today    = date.today()
+        new_date = pd.to_datetime(today).normalize()
+        new_data = pd.DataFrame([{
+            "Date": new_date,
+            "Feed_TPD": feed_day,
+            "Concentrate_TPD": conc_day,
+            "Tailing_TPD": tail_day,
+            "Recovery": recovery,
+        }])
+
+        history_path    = "plant_history.csv"
+        history_columns = ["Date", "Feed_TPD", "Concentrate_TPD", "Tailing_TPD", "Recovery"]
+
+        try:
+            df_history = pd.read_csv(history_path)
+        except (FileNotFoundError, OSError):
+            df_history = pd.DataFrame(columns=history_columns)
+
+        if not df_history.empty:
+            df_history['Date'] = pd.to_datetime(df_history['Date']).dt.normalize()
+
+        if (not df_history.empty) and (df_history['Date'] == new_date).any():
+            st.warning("⚠️ Data for today already exists and will be overwritten on save.")
+
+        if st.button("💾 Save Today's Data"):
+            existing = df_history.copy()
+            if not existing.empty:
+                existing['Date'] = pd.to_datetime(existing['Date']).dt.normalize()
+                existing = existing[existing['Date'] != new_date]
+            df_history = pd.concat([existing, new_data], ignore_index=True)
+            df_history = df_history.drop_duplicates(subset=['Date'], keep='last')
+            df_history = df_history.sort_values(by='Date').reset_index(drop=True)
+            save_df = df_history.copy()
+            save_df['Date'] = pd.to_datetime(save_df['Date']).dt.strftime('%Y-%m-%d')
+            save_df.to_csv(history_path, index=False)
+            st.success("✅ Daily data saved successfully.")
+
+        if not df_history.empty:
+            df_history['Date'] = pd.to_datetime(df_history['Date'])
+
+            fig_trend = make_line_chart(
+                df_history, 'Date',
+                ['Feed_TPD', 'Concentrate_TPD', 'Tailing_TPD'],
+                'Daily Production Trend',
+            )
+            st.plotly_chart(fig_trend, use_container_width=True)
+
+            df_history['Month'] = df_history['Date'].dt.to_period('M')
+            monthly_total = df_history.groupby('Month')['Concentrate_TPD'].sum().reset_index()
+            monthly_total['Month'] = monthly_total['Month'].astype(str)
+            monthly_avg = df_history.groupby('Month')['Concentrate_TPD'].mean().reset_index()
+            monthly_avg['Month'] = monthly_avg['Month'].astype(str)
+
+            hist_col1, hist_col2 = st.columns(2)
+            with hist_col1:
+                fig_mt = make_bar_chart(monthly_total, 'Month', 'Concentrate_TPD', 'Monthly Production (tons)', 'Concentrate (tons)')
+                st.plotly_chart(fig_mt, use_container_width=True)
+            with hist_col2:
+                fig_ma = make_bar_chart(monthly_avg, 'Month', 'Concentrate_TPD', 'Monthly Avg Production (TPD)', 'Concentrate (TPD)')
+                st.plotly_chart(fig_ma, use_container_width=True)
+
+            df_history['Year'] = df_history['Date'].dt.year
+            yearly_total = df_history.groupby('Year')['Concentrate_TPD'].sum().reset_index()
+            yearly_avg   = df_history.groupby('Year')['Concentrate_TPD'].mean().reset_index()
+
+            yr_col1, yr_col2 = st.columns(2)
+            with yr_col1:
+                fig_yt = make_bar_chart(yearly_total, 'Year', 'Concentrate_TPD', 'Yearly Production (tons)', 'Concentrate (tons)')
+                st.plotly_chart(fig_yt, use_container_width=True)
+            with yr_col2:
+                fig_ya = make_bar_chart(yearly_avg, 'Year', 'Concentrate_TPD', 'Yearly Avg Production (TPD)', 'Concentrate (TPD)')
+                st.plotly_chart(fig_ya, use_container_width=True)
+
+            avg_recovery = df_history['Recovery'].mean()
+            st.metric("📊 Average Recovery (All Time)", f"{avg_recovery:.1f}%")
+
+            selected_range = st.date_input(
+                "📅 Filter by Date Range",
+                [df_history['Date'].min().date(), df_history['Date'].max().date()],
+            )
+            if isinstance(selected_range, (list, tuple)) and len(selected_range) == 2:
+                start_date, end_date = selected_range
+                filtered = df_history[
+                    (df_history['Date'] >= pd.to_datetime(start_date)) &
+                    (df_history['Date'] <= pd.to_datetime(end_date))
+                ]
+                if not filtered.empty:
+                    fig_fil = make_line_chart(filtered, 'Date', ['Concentrate_TPD'], 'Filtered Production')
+                    st.plotly_chart(fig_fil, use_container_width=True)
+                else:
+                    st.warning("No data in selected date range.")
+
+            with st.expander("🔎 Raw History Data"):
+                st.dataframe(df_history, hide_index=True, use_container_width=True)
+
+            st.download_button(
+                "⬇️  Download Historical Report",
+                df_history.to_csv(index=False),
+                file_name="plant_report.csv",
+                mime="text/csv",
+            )
+        else:
+            info_panel("No historical data yet. Click 'Save Today's Data' to start tracking.")
+
+    # Tab 3 — Spiral Performance
+    with main_tabs[2]:
         section_heading("🔩", f"Spiral Performance — Spiral {selected_spiral}")
 
-        spiral_df      = df[df['Spiral unit'] == selected_spiral].copy()
-        spiral_conc    = spiral_df[spiral_df['Product'] == 'Concentrate']['Solids Flow'].sum()
+        spiral_df   = df[df['Spiral unit'] == selected_spiral].copy()
+        spiral_conc = spiral_df[spiral_df['Product'] == 'Concentrate']['Solids Flow'].sum()
         sel_production = spiral_conc * EFFECTIVE_HOURS / 1000
         selected_row   = all_perf_df[all_perf_df['Spiral'] == int(selected_spiral)]
         sel_yield      = selected_row.iloc[0]['Solid Yield %'] if not selected_row.empty else 0
@@ -1206,7 +1225,6 @@ def main():
         with sp_cols[1]:
             st.metric("Solid Yield", f"{sel_yield:.2f}%")
 
-        # Build combined performance table
         spiral_production = (
             conc_df.groupby('Spiral unit', as_index=False)['Solids Flow']
             .sum()
@@ -1247,8 +1265,8 @@ def main():
             hide_index=True,
         )
 
-    # ── Tab 2: Feed & Hydraulics ──────────────────────────────────────────────
-    with tabs[1]:
+    # Tab 4 — Feed & Hydraulics
+    with main_tabs[3]:
         section_heading("💧", "Feed & Hydraulics (Calculated Feed: C + M + T)")
         info_panel("All metrics in this tab use calculated feed only (Concentrate + Middling + Tailing).")
 
@@ -1281,7 +1299,7 @@ def main():
         st.caption("Internal Feed = Concentrate + Middling + Tailing per group (for yield calculations only).")
 
         section_heading("📊", "Group Performance Analysis")
-        for group_name, group_spirals in [("A (1–4)", group_A), ("B (7–8)", group_B)]:
+        for group_name, group_spirals in [("A (1-4)", group_A), ("B (7-8)", group_B)]:
             with st.expander(f"Group {group_name}", expanded=True):
                 group_perf = all_perf_df[all_perf_df['Spiral'].isin(group_spirals)].copy()
                 if not group_perf.empty:
@@ -1292,6 +1310,7 @@ def main():
                                                          .format({'Yield (%)': '{:.1f}', 'Middling %': '{:.1f}', 'Tailing %': '{:.1f}'}),
                                  hide_index=True, use_container_width=True)
 
+                    group_perf = group_perf.copy()
                     group_perf['score'] = group_perf['Solid Yield %'] - group_perf['Middling %'] * 0.5
                     best_spiral_row = group_perf.loc[group_perf['score'].idxmax()]
                     best_sp  = int(best_spiral_row['Spiral'])
@@ -1322,8 +1341,8 @@ def main():
         if increase > 15:
             pro_alert("⚠️ Feed Increase Warning", "Higher feed may reduce separation efficiency and increase middling recycle.", "warning")
 
-    # ── Tab 3: Recycle Analysis ───────────────────────────────────────────────
-    with tabs[2]:
+    # Tab 5 — Recycle Analysis
+    with main_tabs[4]:
         section_heading("♻️", "Recycle Analysis")
         info_panel("Middling flow and recycle behaviour. Internal feed = C + M + T per spiral.")
 
@@ -1354,7 +1373,7 @@ def main():
             fig_mid = make_bar_chart(
                 middling_chart_c, 'Spiral', 'Middling %',
                 'Group C Middling % (Lower is Better)', 'Middling %',
-                colors=['#D68910', '#C0392B'],
+                colors=['#FBBF24', '#F87171'],
             )
             st.plotly_chart(fig_mid, use_container_width=True)
             st.dataframe(
@@ -1365,8 +1384,8 @@ def main():
                 use_container_width=True,
             )
 
-    # ── Tab 4: Sensitivity Analysis ───────────────────────────────────────────
-    with tabs[3]:
+    # Tab 6 — Sensitivity Analysis
+    with main_tabs[5]:
         section_heading("🔬", "Sensitivity Analysis")
 
         st.markdown("#### 🔵 Spiral 1 — Primary Concentrator")
@@ -1405,7 +1424,7 @@ def main():
         fig_s5 = make_bar_chart(
             middling_data_s5, 'Condition', 'Middling Fraction %',
             'Spiral 5 — Middling Fraction by Condition', 'Middling %',
-            colors=['#D68910', '#C0392B', '#E74C3C', '#F39C12'],
+            colors=['#FBBF24', '#F87171', '#FB923C', '#FDE68A'],
         )
         st.plotly_chart(fig_s5, use_container_width=True)
 
@@ -1417,7 +1436,6 @@ def main():
             </div>""",
             unsafe_allow_html=True,
         )
-
 
 if __name__ == '__main__':
     main()
