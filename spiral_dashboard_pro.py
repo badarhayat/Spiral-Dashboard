@@ -1,12 +1,25 @@
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import matplotlib.pyplot as plt
 import io
 from datetime import date
 
 SLURRY_DENSITY = 1.2  # kg/L for heavy mineral placer slurry
 EFFECTIVE_HOURS = 11
 VALID_PRODUCTS = {'Concentrate', 'Middling', 'Tailings'}
+XRF_REQUIRED_COLUMNS = ['Unit_Type', 'Unit_ID', 'Stream', 'TiO2', 'Fe2O3', 'ZrO2', 'Au_ppm', 'REE']
+XRF_ELEMENTS = ['Au_ppm', 'REE', 'TiO2', 'Fe2O3', 'ZrO2', 'Garnet_Est']
+XRF_MODULES = ['Spiral', 'Cleaner']
+XRF_STREAM_ORDER = ['Feed', 'Conc', 'Midd', 'Tail']
+XRF_MINERAL_LABELS = {
+    'Au_ppm': 'Gold',
+    'REE': 'Monazite',
+    'TiO2': 'Ilmenite',
+    'Fe2O3': 'Magnetite',
+    'ZrO2': 'Zircon',
+    'Garnet_Est': 'Garnet (est.)',
+}
 APP_ICON = '🏭'
 
 # ── Professional color palette ───────────────────────────────────────────────
@@ -644,6 +657,907 @@ def load_uploaded_daily_data(uploaded_file):
     return df, group
 
 
+@st.cache_data
+def load_xrf_excel(file_bytes):
+    df = pd.read_excel(io.BytesIO(file_bytes))
+    df.columns = df.columns.str.strip()
+    return df
+
+
+def normalize_xrf_data(df):
+    normalized = df.copy()
+    normalized.columns = normalized.columns.str.strip()
+    normalized['Module'] = normalized['Module'].astype(str).str.strip().str.title()
+    normalized['Stream'] = normalized['Stream'].astype(str).str.strip().str.title()
+    normalized['Stream'] = normalized['Stream'].replace({
+        'Concentrate': 'Conc',
+        'Conc': 'Conc',
+        'Tail': 'Tail',
+        'Tailing': 'Tail',
+        'Tailings': 'Tail',
+        'Midd': 'Midd',
+        'Middling': 'Midd',
+        'Feed': 'Feed',
+    })
+    return normalized
+
+
+def validate_xrf_data(df):
+    missing_columns = [col for col in XRF_REQUIRED_COLUMNS if col not in df.columns]
+    if missing_columns:
+        return [f"Missing required columns: {', '.join(missing_columns)}."]
+
+    errors = []
+    for column in ['Mass_tph', *XRF_ELEMENTS]:
+        df[column] = pd.to_numeric(df[column], errors='coerce')
+
+    invalid_modules = sorted(set(df['Module'].dropna()) - set(XRF_MODULES))
+    if invalid_modules:
+        errors.append(f"Invalid Module values found: {', '.join(map(str, invalid_modules))}. Use Spiral or Cleaner.")
+
+    invalid_streams = sorted(set(df['Stream'].dropna()) - set(XRF_STREAM_ORDER))
+    if invalid_streams:
+        errors.append(f"Invalid Stream values found: {', '.join(map(str, invalid_streams))}. Use Feed, Conc, Midd, or Tail.")
+
+    numeric_columns = ['Mass_tph', *XRF_ELEMENTS]
+    null_numeric = [col for col in numeric_columns if df[col].isna().any()]
+    if null_numeric:
+        errors.append(f"Numeric columns contain blanks or non-numeric values: {', '.join(null_numeric)}.")
+
+    for module in XRF_MODULES:
+        module_data = df[df['Module'] == module]
+        if module_data.empty:
+            errors.append(f"No rows found for module '{module}'.")
+            continue
+        if not (module_data['Stream'] == 'Feed').any():
+            errors.append(f"Module '{module}' is missing a Feed row.")
+        if not (module_data['Stream'] == 'Conc').any():
+            errors.append(f"Module '{module}' is missing a Conc row.")
+        duplicate_pairs = module_data.groupby('Stream').size()
+        duplicates = duplicate_pairs[duplicate_pairs > 1]
+        if not duplicates.empty:
+            repeated = ', '.join(f"{stream} ({count})" for stream, count in duplicates.items())
+            errors.append(f"Module '{module}' has duplicate stream rows: {repeated}.")
+
+    return errors
+
+
+def get_xrf_row(df, module, stream):
+    rows = df[(df['Module'] == module) & (df['Stream'] == stream)]
+    if rows.empty:
+        raise ValueError(f"{module} is missing the {stream} row.")
+    return rows.iloc[0]
+
+
+def safe_recovery(numerator_mass, numerator_grade, denominator_mass, denominator_grade):
+    denominator = denominator_mass * denominator_grade
+    if denominator == 0:
+        raise ZeroDivisionError("Feed mass or grade is zero, so recovery cannot be calculated.")
+    return (numerator_mass * numerator_grade / denominator) * 100
+
+
+def calculate_recovery(df, module, element):
+    feed = get_xrf_row(df, module, 'Feed')
+    conc = get_xrf_row(df, module, 'Conc')
+    return safe_recovery(conc['Mass_tph'], conc[element], feed['Mass_tph'], feed[element])
+
+
+def plant_recovery(df, element):
+    if (df['Module'] == 'Spiral').any():
+        feed = get_xrf_row(df, 'Spiral', 'Feed')
+    else:
+        feed_rows = df[df['Stream'] == 'Feed']
+        if feed_rows.empty:
+            raise ValueError("Plant feed row is missing.")
+        feed = feed_rows.iloc[0]
+
+    final_conc = get_xrf_row(df, 'Cleaner', 'Conc')
+    return safe_recovery(final_conc['Mass_tph'], final_conc[element], feed['Mass_tph'], feed[element])
+
+
+def calculate_mass_balance(df, module, tolerance_pct=5.0):
+    module_data = df[df['Module'] == module]
+    feed = get_xrf_row(module_data, module, 'Feed')
+    product_mass = module_data[module_data['Stream'].isin(['Conc', 'Tail', 'Midd'])]['Mass_tph'].sum()
+    difference = product_mass - feed['Mass_tph']
+    difference_pct = (difference / feed['Mass_tph'] * 100) if feed['Mass_tph'] else None
+    is_balanced = difference_pct is not None and abs(difference_pct) <= tolerance_pct
+    return {
+        'Module': module,
+        'Feed_tph': feed['Mass_tph'],
+        'Products_tph': product_mass,
+        'Difference_tph': difference,
+        'Difference_pct': difference_pct,
+        'Balanced': is_balanced,
+    }
+
+
+def build_xrf_results(df):
+    recovery_rows = []
+    calc_errors = []
+
+    for module in XRF_MODULES:
+        for element in XRF_ELEMENTS:
+            try:
+                recovery_value = calculate_recovery(df, module, element)
+            except (ValueError, ZeroDivisionError) as exc:
+                recovery_value = None
+                calc_errors.append(f"{module} {element}: {exc}")
+
+            recovery_rows.append({
+                'Module': module,
+                'Element': element,
+                'Recovery %': recovery_value,
+            })
+
+    plant_rows = []
+    for element in XRF_ELEMENTS:
+        try:
+            recovery_value = plant_recovery(df, element)
+        except (ValueError, ZeroDivisionError) as exc:
+            recovery_value = None
+            calc_errors.append(f"Plant {element}: {exc}")
+        plant_rows.append({
+            'Element': element,
+            'Recovery %': recovery_value,
+        })
+
+    display_df = df.copy()
+    display_df['Zircon_%'] = display_df['ZrO2']
+    display_df['Ilmenite_%'] = display_df['TiO2']
+    display_df['Monazite_%'] = display_df['REE']
+    display_df['Stream'] = pd.Categorical(display_df['Stream'], categories=XRF_STREAM_ORDER, ordered=True)
+    display_df = display_df.sort_values(['Module', 'Stream']).reset_index(drop=True)
+    display_df['Stream'] = display_df['Stream'].astype(str)
+
+    mass_balance_df = pd.DataFrame([calculate_mass_balance(df, module) for module in XRF_MODULES])
+    module_grades = display_df[['Module', 'Stream', 'Mass_tph', *XRF_ELEMENTS, 'Zircon_%', 'Ilmenite_%', 'Monazite_%']].copy()
+
+    return {
+        'display_df': display_df,
+        'module_grades': module_grades,
+        'module_recovery_df': pd.DataFrame(recovery_rows),
+        'plant_recovery_df': pd.DataFrame(plant_rows),
+        'mass_balance_df': mass_balance_df,
+        'errors': calc_errors,
+    }
+
+
+def render_xrf_dashboard(xrf_df, xrf_results):
+    section_heading("🧪", "XRF Metallurgical Dashboard")
+    info_panel("Upload XRF assay data to calculate grades, module recovery, plant recovery, and a quick mass balance check for the Spiral → Cleaner circuit.")
+
+    preview_cols = ['Module', 'Stream', 'Mass_tph', *XRF_ELEMENTS]
+    st.markdown("#### Uploaded XRF Data")
+    st.dataframe(xrf_results['display_df'][preview_cols], use_container_width=True, hide_index=True)
+
+    if xrf_results['errors']:
+        for message in xrf_results['errors']:
+            st.warning(message)
+
+    mass_balance_df = xrf_results['mass_balance_df'].copy()
+    for _, row in mass_balance_df.iterrows():
+        if not row['Balanced']:
+            diff_pct = 0 if pd.isna(row['Difference_pct']) else row['Difference_pct']
+            st.warning(
+                f"Mass balance error detected in {row['Module']}: "
+                f"feed {row['Feed_tph']:.2f} tph vs products {row['Products_tph']:.2f} tph "
+                f"({diff_pct:+.2f}%)."
+            )
+
+    module_tabs = st.tabs(["Spiral", "Cleaner", "Plant Dashboard"])
+
+    with module_tabs[0]:
+        section_heading("🔩", "Spiral XRF Performance")
+        spiral_grades = xrf_results['module_grades'][xrf_results['module_grades']['Module'] == 'Spiral']
+        spiral_recovery = xrf_results['module_recovery_df'][xrf_results['module_recovery_df']['Module'] == 'Spiral']
+        st.dataframe(spiral_grades, use_container_width=True, hide_index=True)
+        st.dataframe(
+            spiral_recovery.style.format({'Recovery %': '{:.2f}'}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    with module_tabs[1]:
+        section_heading("🧼", "Cleaner XRF Performance")
+        cleaner_grades = xrf_results['module_grades'][xrf_results['module_grades']['Module'] == 'Cleaner']
+        cleaner_recovery = xrf_results['module_recovery_df'][xrf_results['module_recovery_df']['Module'] == 'Cleaner']
+        st.dataframe(cleaner_grades, use_container_width=True, hide_index=True)
+        st.dataframe(
+            cleaner_recovery.style.format({'Recovery %': '{:.2f}'}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    with module_tabs[2]:
+        section_heading("🏭", "Overall Plant Recovery")
+        plant_recovery_df = xrf_results['plant_recovery_df'].copy()
+        metric_map = {
+            'ZrO2': 'Zircon Recovery %',
+            'TiO2': 'Titanium Recovery %',
+            'Fe2O3': 'Iron Recovery %',
+            'Au_ppm': 'Gold Recovery %',
+        }
+        metric_cols = st.columns(len(metric_map))
+        for idx, (element, label) in enumerate(metric_map.items()):
+            value_series = plant_recovery_df.loc[plant_recovery_df['Element'] == element, 'Recovery %']
+            value = value_series.iloc[0] if not value_series.empty else None
+            metric_cols[idx].metric(label, "N/A" if pd.isna(value) else f"{value:.2f}%")
+
+        st.dataframe(
+            plant_recovery_df.style.format({'Recovery %': '{:.2f}'}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        chart_df = plant_recovery_df.dropna(subset=['Recovery %'])
+        if not chart_df.empty:
+            fig, ax = plt.subplots(figsize=(8, 4.5))
+            ax.bar(chart_df['Element'], chart_df['Recovery %'])
+            ax.set_xlabel('Elements')
+            ax.set_ylabel('Recovery %')
+            ax.set_title('Plant Recovery by Element')
+            ax.grid(axis='y', alpha=0.25)
+            st.pyplot(fig, use_container_width=True)
+            plt.close(fig)
+
+        st.markdown("#### Mass Balance Check")
+        st.dataframe(
+            mass_balance_df.style.format({
+                'Feed_tph': '{:.2f}',
+                'Products_tph': '{:.2f}',
+                'Difference_tph': '{:+.2f}',
+                'Difference_pct': '{:+.2f}',
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+@st.cache_data
+def load_xrf_excel(file_bytes):
+    df = pd.read_excel(io.BytesIO(file_bytes))
+    df.columns = df.columns.str.strip()
+    return df
+
+
+def normalize_xrf_data(df):
+    normalized = df.copy()
+    normalized.columns = normalized.columns.str.strip()
+    normalized['Unit_Type'] = normalized['Unit_Type'].astype(str).str.strip().str.title()
+    normalized['Unit_ID'] = normalized['Unit_ID'].astype(str).str.strip()
+    normalized['Stream'] = normalized['Stream'].astype(str).str.strip().str.title()
+    normalized['Stream'] = normalized['Stream'].replace({
+        'Concentrate': 'Conc',
+        'Conc': 'Conc',
+        'Tail': 'Tail',
+        'Tailing': 'Tail',
+        'Tailings': 'Tail',
+        'Midd': 'Midd',
+        'Middling': 'Midd',
+        'Feed': 'Feed',
+    })
+    normalized['Garnet_Est'] = (
+        0.35 * pd.to_numeric(normalized['Fe2O3'], errors='coerce') +
+        0.15 * pd.to_numeric(normalized['TiO2'], errors='coerce')
+    )
+    return normalized
+
+
+def validate_xrf_data(df):
+    missing_columns = [col for col in XRF_REQUIRED_COLUMNS if col not in df.columns]
+    if missing_columns:
+        return [f"Missing required columns: {', '.join(missing_columns)}."]
+
+    errors = []
+    for column in ['TiO2', 'Fe2O3', 'ZrO2', 'Au_ppm', 'REE']:
+        df[column] = pd.to_numeric(df[column], errors='coerce')
+
+    invalid_types = sorted(set(df['Unit_Type'].dropna()) - set(XRF_MODULES))
+    if invalid_types:
+        errors.append(f"Invalid Unit_Type values found: {', '.join(map(str, invalid_types))}. Use Spiral or Cleaner.")
+
+    invalid_streams = sorted(set(df['Stream'].dropna()) - set(XRF_STREAM_ORDER))
+    if invalid_streams:
+        errors.append(f"Invalid Stream values found: {', '.join(map(str, invalid_streams))}. Use Feed, Conc, Midd, or Tail.")
+
+    if df['Unit_ID'].eq('').any():
+        errors.append("Unit_ID contains blank values.")
+
+    null_numeric = [col for col in ['TiO2', 'Fe2O3', 'ZrO2', 'Au_ppm', 'REE'] if df[col].isna().any()]
+    if null_numeric:
+        errors.append(f"Numeric columns contain blanks or non-numeric values: {', '.join(null_numeric)}.")
+
+    for unit_id in sorted(df['Unit_ID'].dropna().unique()):
+        unit_data = df[df['Unit_ID'] == unit_id]
+        unit_type = unit_data['Unit_Type'].iloc[0]
+        stream_counts = unit_data.groupby('Stream').size()
+        if stream_counts.get('Feed', 0) != 1:
+            errors.append(f"{unit_id} ({unit_type}) must have exactly one Feed row.")
+        if stream_counts.get('Conc', 0) != 1:
+            errors.append(f"{unit_id} ({unit_type}) must have exactly one Conc row.")
+        if stream_counts.get('Tail', 0) < 1:
+            errors.append(f"{unit_id} ({unit_type}) must have at least one Tail row.")
+        if stream_counts.get('Feed', 0) > 1 or stream_counts.get('Conc', 0) > 1:
+            errors.append(f"{unit_id} ({unit_type}) has duplicate Feed or Conc rows.")
+
+    return list(dict.fromkeys(errors))
+
+
+def build_process_mass_map(process_df):
+    process_rows = []
+
+    if {'Unit_ID', 'Stream'}.issubset(process_df.columns):
+        direct_df = process_df.copy()
+        if 'Unit_Type' not in direct_df.columns:
+            direct_df['Unit_Type'] = direct_df['Unit_ID'].astype(str).str.extract(r'^(Spiral|Cleaner)', expand=False).fillna('Spiral')
+        direct_df['Unit_Type'] = direct_df['Unit_Type'].astype(str).str.strip().str.title()
+        direct_df['Unit_ID'] = direct_df['Unit_ID'].astype(str).str.strip()
+        direct_df['Stream'] = direct_df['Stream'].astype(str).str.strip().str.title().replace({
+            'Concentrate': 'Conc',
+            'Tailings': 'Tail',
+            'Tailing': 'Tail',
+            'Middling': 'Midd',
+        })
+        direct_df['Mass_tph'] = pd.to_numeric(direct_df.get('Mass_tph', direct_df['Solids Flow'] / 1000), errors='coerce')
+        return direct_df[['Unit_Type', 'Unit_ID', 'Stream', 'Mass_tph']].dropna(subset=['Mass_tph'])
+
+    if {'Spiral unit', 'Product', 'Solids Flow'}.issubset(process_df.columns):
+        spiral_df = process_df.copy()
+        spiral_df['Unit_Type'] = 'Spiral'
+        spiral_df['Unit_ID'] = 'Spiral ' + spiral_df['Spiral unit'].astype(int).astype(str)
+        spiral_df['Stream'] = spiral_df['Product'].replace({
+            'Concentrate': 'Conc',
+            'Middling': 'Midd',
+            'Tailings': 'Tail',
+        })
+        spiral_df['Mass_tph'] = spiral_df['Solids Flow'] / 1000
+        product_map = spiral_df[['Unit_Type', 'Unit_ID', 'Stream', 'Mass_tph']].copy()
+        feed_map = (
+            spiral_df.groupby(['Unit_Type', 'Unit_ID'], as_index=False)['Mass_tph']
+            .sum()
+            .assign(Stream='Feed')
+        )
+        process_rows.append(product_map)
+        process_rows.append(feed_map[['Unit_Type', 'Unit_ID', 'Stream', 'Mass_tph']])
+
+    if not process_rows:
+        return pd.DataFrame(columns=['Unit_Type', 'Unit_ID', 'Stream', 'Mass_tph'])
+
+    process_map = pd.concat(process_rows, ignore_index=True)
+    process_map = process_map.groupby(['Unit_Type', 'Unit_ID', 'Stream'], as_index=False)['Mass_tph'].sum()
+    return process_map
+
+
+def merge_xrf_with_process_data(xrf_df, process_df):
+    process_map = build_process_mass_map(process_df)
+    cleaner_ids = sorted(xrf_df.loc[xrf_df['Unit_Type'] == 'Cleaner', 'Unit_ID'].dropna().unique())
+    if cleaner_ids and process_map[process_map['Unit_Type'] == 'Cleaner'].empty:
+        secondary_units = sorted(process_map.loc[process_map['Unit_ID'].isin(['Spiral 5', 'Spiral 6']), 'Unit_ID'].dropna().unique())
+        if len(secondary_units) >= len(cleaner_ids):
+            cleaner_frames = []
+            for cleaner_id, source_unit in zip(cleaner_ids, secondary_units):
+                source_rows = process_map[process_map['Unit_ID'] == source_unit].copy()
+                source_rows['Unit_Type'] = 'Cleaner'
+                source_rows['Unit_ID'] = cleaner_id
+                cleaner_frames.append(source_rows)
+            if cleaner_frames:
+                process_map = pd.concat([process_map, *cleaner_frames], ignore_index=True)
+                process_map = process_map.groupby(['Unit_Type', 'Unit_ID', 'Stream'], as_index=False)['Mass_tph'].sum()
+
+    merged_df = xrf_df.merge(
+        process_map,
+        on=['Unit_Type', 'Unit_ID', 'Stream'],
+        how='left',
+    )
+
+    missing_mass_rows = merged_df[merged_df['Mass_tph'].isna()][['Unit_Type', 'Unit_ID', 'Stream']]
+    missing_messages = []
+    if not missing_mass_rows.empty:
+        for _, row in missing_mass_rows.drop_duplicates().iterrows():
+            missing_messages.append(
+                f"No internally calculated mass found for {row['Unit_ID']} ({row['Unit_Type']}) {row['Stream']}."
+            )
+    merged_df = merged_df.dropna(subset=['Mass_tph']).copy()
+    return merged_df, process_map, missing_messages
+
+
+def calculate_stream_loss(df, unit_id, stream, element):
+    feed = get_xrf_row(df, unit_id, 'Feed')
+    stream_rows = df[(df['Unit_ID'] == unit_id) & (df['Stream'] == stream)]
+    stream_value = (stream_rows['Mass_tph'] * stream_rows[element]).sum()
+    total_feed = feed['Mass_tph'] * feed[element]
+    if total_feed == 0:
+        raise ZeroDivisionError("Feed mass or grade is zero, so stream loss cannot be calculated.")
+    return (stream_value / total_feed) * 100
+
+
+def get_xrf_row(df, unit_id, stream):
+    rows = df[(df['Unit_ID'] == unit_id) & (df['Stream'] == stream)]
+    if rows.empty:
+        raise ValueError(f"{unit_id} is missing the {stream} row.")
+    return rows.iloc[0]
+
+
+def calculate_unit_recovery(df, unit_id, element):
+    feed = get_xrf_row(df, unit_id, 'Feed')
+    conc = get_xrf_row(df, unit_id, 'Conc')
+    return safe_recovery(conc['Mass_tph'], conc[element], feed['Mass_tph'], feed[element])
+
+
+def calculate_loss(df, unit_id, element):
+    feed = get_xrf_row(df, unit_id, 'Feed')
+    losses = df[(df['Unit_ID'] == unit_id) & (df['Stream'].isin(['Tail', 'Midd']))]
+    loss_value = (losses['Mass_tph'] * losses[element]).sum()
+    total_feed = feed['Mass_tph'] * feed[element]
+    if total_feed == 0:
+        raise ZeroDivisionError("Feed mass or grade is zero, so loss cannot be calculated.")
+    return (loss_value / total_feed) * 100
+
+
+def grade_improvement(df, unit_id, element):
+    feed = get_xrf_row(df, unit_id, 'Feed')
+    conc = get_xrf_row(df, unit_id, 'Conc')
+    if feed[element] == 0:
+        raise ZeroDivisionError("Feed grade is zero, so grade upgrade cannot be calculated.")
+    return conc[element] / feed[element]
+
+
+def plant_recovery(df, element):
+    spiral_feeds = df[(df['Unit_Type'] == 'Spiral') & (df['Stream'] == 'Feed')]
+    cleaner_conc = df[(df['Unit_Type'] == 'Cleaner') & (df['Stream'] == 'Conc')]
+    if spiral_feeds.empty:
+        raise ValueError("Plant feed rows are missing for Spiral units.")
+    if cleaner_conc.empty:
+        raise ValueError("Final cleaner concentrate rows are missing.")
+    total_feed = (spiral_feeds['Mass_tph'] * spiral_feeds[element]).sum()
+    total_conc = (cleaner_conc['Mass_tph'] * cleaner_conc[element]).sum()
+    if total_feed == 0:
+        raise ZeroDivisionError("Plant feed mass or grade is zero, so recovery cannot be calculated.")
+    return (total_conc / total_feed) * 100
+
+
+def plant_loss(df, element):
+    spiral_feeds = df[(df['Unit_Type'] == 'Spiral') & (df['Stream'] == 'Feed')]
+    loss_rows = df[df['Stream'].isin(['Tail', 'Midd'])]
+    if spiral_feeds.empty:
+        raise ValueError("Plant feed rows are missing for Spiral units.")
+    total_feed = (spiral_feeds['Mass_tph'] * spiral_feeds[element]).sum()
+    total_loss = (loss_rows['Mass_tph'] * loss_rows[element]).sum()
+    if total_feed == 0:
+        raise ZeroDivisionError("Plant feed mass or grade is zero, so loss cannot be calculated.")
+    return (total_loss / total_feed) * 100
+
+
+def calculate_mass_balance(df, unit_id, tolerance_pct=5.0):
+    unit_data = df[df['Unit_ID'] == unit_id]
+    feed = get_xrf_row(df, unit_id, 'Feed')
+    product_mass = unit_data[unit_data['Stream'].isin(['Conc', 'Tail', 'Midd'])]['Mass_tph'].sum()
+    difference = product_mass - feed['Mass_tph']
+    difference_pct = (difference / feed['Mass_tph'] * 100) if feed['Mass_tph'] else None
+    return {
+        'Unit_Type': unit_data['Unit_Type'].iloc[0],
+        'Unit_ID': unit_id,
+        'Feed_tph': feed['Mass_tph'],
+        'Products_tph': product_mass,
+        'Difference_tph': difference,
+        'Difference_pct': difference_pct,
+        'Balanced': difference_pct is not None and abs(difference_pct) <= tolerance_pct,
+    }
+
+
+def build_unit_insights(unit_summary_df):
+    insights = []
+    for _, row in unit_summary_df.iterrows():
+        if pd.notna(row['Avg Recovery %']) and row['Avg Recovery %'] < 50:
+            insights.append(f"High losses detected in {row['Unit_ID']} -> Check splitter position or deck tilt.")
+        if pd.notna(row['Avg Grade Upgrade']) and row['Avg Grade Upgrade'] < 1.2:
+            insights.append(f"Poor upgrading in {row['Unit_ID']} -> Possible misplacement or feed issue.")
+        if pd.notna(row.get('Gold Tail Loss %')) and row['Gold Tail Loss %'] > 20:
+            insights.append(f"{row['Unit_ID']}: Gold loss is high -> Check splitter position or deck tilt.")
+        if pd.notna(row.get('REE Midd Loss %')) and row['REE Midd Loss %'] > 15:
+            insights.append(f"{row['Unit_ID']}: REE loss in middlings is high -> Possible improper separation density.")
+        if pd.notna(row.get('Ti Tail Loss %')) and row['Ti Tail Loss %'] > 20:
+            insights.append(f"{row['Unit_ID']}: TiO2 loss to tail is high -> Adjust wash water or feed rate.")
+    return insights
+
+
+def plot_metric_by_unit(data, metric_column, title):
+    chart_df = data.dropna(subset=[metric_column]).copy()
+    if chart_df.empty:
+        return None
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=chart_df['Unit_ID'],
+        y=chart_df[metric_column],
+        marker_color=[CHART_COLORS[i % len(CHART_COLORS)] for i in range(len(chart_df))],
+        hovertemplate="%{x}<br>%{y:.2f}<extra></extra>",
+    ))
+    fig.update_layout(
+        title=dict(text=title, x=0, font=dict(size=15, color='#F8FAFC')),
+        xaxis=dict(title='Unit ID', showgrid=False, tickangle=-25),
+        yaxis=dict(title=metric_column, showgrid=True, gridcolor='rgba(148,163,184,0.16)'),
+        plot_bgcolor='rgba(15, 23, 42, 0.92)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        height=320,
+        margin=dict(l=40, r=20, t=50, b=70),
+        font=dict(family='Inter', color='#E2E8F0'),
+    )
+    return fig
+
+
+def build_xrf_results(df, process_map=None, merge_messages=None):
+    unit_rows = []
+    calc_errors = []
+    unit_ids = sorted(df['Unit_ID'].dropna().unique())
+
+    for unit_id in unit_ids:
+        unit_type = df.loc[df['Unit_ID'] == unit_id, 'Unit_Type'].iloc[0]
+        for element in XRF_ELEMENTS:
+            try:
+                recovery_value = calculate_unit_recovery(df, unit_id, element)
+                loss_value = calculate_loss(df, unit_id, element)
+                grade_upgrade = grade_improvement(df, unit_id, element)
+            except (ValueError, ZeroDivisionError) as exc:
+                recovery_value = None
+                loss_value = None
+                grade_upgrade = None
+                calc_errors.append(f"{unit_id} {XRF_MINERAL_LABELS.get(element, element)}: {exc}")
+            try:
+                tail_loss_value = calculate_stream_loss(df, unit_id, 'Tail', element)
+            except (ValueError, ZeroDivisionError):
+                tail_loss_value = None
+            try:
+                midd_loss_value = calculate_stream_loss(df, unit_id, 'Midd', element)
+            except (ValueError, ZeroDivisionError):
+                midd_loss_value = None
+            unit_rows.append({
+                'Unit_Type': unit_type,
+                'Unit_ID': unit_id,
+                'Element': element,
+                'Mineral': XRF_MINERAL_LABELS.get(element, element),
+                'Recovery %': recovery_value,
+                'Loss %': loss_value,
+                'Tail Loss %': tail_loss_value,
+                'Midd Loss %': midd_loss_value,
+                'Grade Upgrade': grade_upgrade,
+            })
+
+    plant_rows = []
+    for element in XRF_ELEMENTS:
+        try:
+            recovery_value = plant_recovery(df, element)
+            loss_value = plant_loss(df, element)
+        except (ValueError, ZeroDivisionError) as exc:
+            recovery_value = None
+            loss_value = None
+            calc_errors.append(f"Plant {XRF_MINERAL_LABELS.get(element, element)}: {exc}")
+        plant_rows.append({
+            'Element': element,
+            'Mineral': XRF_MINERAL_LABELS.get(element, element),
+            'Recovery %': recovery_value,
+            'Loss %': loss_value,
+        })
+
+    display_df = df.copy()
+    display_df['Gold'] = display_df['Au_ppm']
+    display_df['Monazite_%'] = display_df['REE']
+    display_df['Ilmenite_%'] = display_df['TiO2']
+    display_df['Magnetite_%'] = display_df['Fe2O3']
+    display_df['Zircon_%'] = display_df['ZrO2']
+    display_df['Garnet_Est_%'] = display_df['Garnet_Est']
+    display_df['Stream'] = pd.Categorical(display_df['Stream'], categories=XRF_STREAM_ORDER, ordered=True)
+    display_df = display_df.sort_values(['Unit_Type', 'Unit_ID', 'Stream']).reset_index(drop=True)
+    display_df['Stream'] = display_df['Stream'].astype(str)
+
+    unit_results_df = pd.DataFrame(unit_rows)
+    unit_summary_df = (
+        unit_results_df.groupby(['Unit_Type', 'Unit_ID'], as_index=False)
+        .agg({
+            'Recovery %': 'mean',
+            'Loss %': 'mean',
+            'Grade Upgrade': 'mean',
+        })
+        .rename(columns={
+            'Recovery %': 'Avg Recovery %',
+            'Loss %': 'Avg Loss %',
+            'Grade Upgrade': 'Avg Grade Upgrade',
+        })
+    )
+    ranking_df = unit_summary_df.copy()
+    ranking_df['Performance Score'] = ranking_df['Avg Recovery %'].fillna(0) - ranking_df['Avg Loss %'].fillna(0)
+    ranking_df['Rank'] = ranking_df.groupby('Unit_Type')['Performance Score'].rank(method='dense', ascending=False).astype(int)
+
+    critical_loss_df = (
+        unit_results_df[unit_results_df['Element'].isin(['Au_ppm', 'ZrO2', 'REE', 'TiO2'])]
+        .pivot_table(index=['Unit_Type', 'Unit_ID'], columns='Element', values=['Tail Loss %', 'Midd Loss %'], aggfunc='first')
+        .reset_index()
+    )
+    critical_loss_df.columns = [
+        'Unit_Type' if col == ('Unit_Type', '') else
+        'Unit_ID' if col == ('Unit_ID', '') else
+        f"{' '.join([part for part in col if part]).strip()}"
+        for col in critical_loss_df.columns
+    ]
+    critical_loss_df = critical_loss_df.rename(columns={
+        'Tail Loss % Au_ppm': 'Gold Tail Loss %',
+        'Tail Loss % ZrO2': 'Zircon Tail Loss %',
+        'Midd Loss % REE': 'REE Midd Loss %',
+        'Tail Loss % TiO2': 'Ti Tail Loss %',
+    })
+    unit_summary_df = unit_summary_df.merge(critical_loss_df, on=['Unit_Type', 'Unit_ID'], how='left')
+    unit_summary_df = unit_summary_df.merge(ranking_df[['Unit_Type', 'Unit_ID', 'Performance Score', 'Rank']], on=['Unit_Type', 'Unit_ID'], how='left')
+    for column in ['Gold Tail Loss %', 'Zircon Tail Loss %', 'REE Midd Loss %', 'Ti Tail Loss %']:
+        if column not in unit_summary_df.columns:
+            unit_summary_df[column] = pd.NA
+
+    mass_balance_df = pd.DataFrame([calculate_mass_balance(df, unit_id) for unit_id in unit_ids])
+    unit_grades = display_df[['Unit_Type', 'Unit_ID', 'Stream', 'Mass_tph', 'Au_ppm', 'REE', 'TiO2', 'Fe2O3', 'ZrO2', 'Garnet_Est', 'Monazite_%', 'Ilmenite_%', 'Magnetite_%', 'Zircon_%', 'Garnet_Est_%']].copy()
+
+    final_conc_df = display_df[(display_df['Unit_Type'] == 'Cleaner') & (display_df['Stream'] == 'Conc')].copy()
+    if final_conc_df.empty:
+        final_conc_df = display_df[display_df['Stream'] == 'Conc'].copy()
+    if final_conc_df.empty:
+        final_grade_df = pd.DataFrame(columns=['Mineral', 'Final Grade'])
+    else:
+        total_final_mass = final_conc_df['Mass_tph'].sum()
+        final_grade_df = pd.DataFrame([
+            {'Mineral': XRF_MINERAL_LABELS[element], 'Final Grade': (final_conc_df['Mass_tph'] * final_conc_df[element]).sum() / total_final_mass if total_final_mass > 0 else None}
+            for element in ['Au_ppm', 'ZrO2', 'TiO2', 'REE']
+        ])
+
+    stage_rows = []
+    spiral_feed = display_df[(display_df['Unit_Type'] == 'Spiral') & (display_df['Stream'] == 'Feed')]
+    spiral_conc = display_df[(display_df['Unit_Type'] == 'Spiral') & (display_df['Stream'] == 'Conc')]
+    cleaner_feed = display_df[(display_df['Unit_Type'] == 'Cleaner') & (display_df['Stream'] == 'Feed')]
+    final_conc = display_df[(display_df['Unit_Type'] == 'Cleaner') & (display_df['Stream'] == 'Conc')]
+    stage_map = [
+        ('Spiral Feed', spiral_feed),
+        ('Spiral Concentrate', spiral_conc),
+        ('Cleaner Feed', cleaner_feed),
+        ('Final Concentrate', final_conc),
+    ]
+    for stage_name, stage_df in stage_map:
+        stage_mass = stage_df['Mass_tph'].sum()
+        for element in ['Au_ppm', 'ZrO2', 'TiO2', 'REE']:
+            grade = (stage_df['Mass_tph'] * stage_df[element]).sum() / stage_mass if stage_mass > 0 else None
+            stage_rows.append({'Stage': stage_name, 'Element': element, 'Mineral': XRF_MINERAL_LABELS[element], 'Grade': grade})
+    stage_grade_df = pd.DataFrame(stage_rows)
+
+    best_units = (
+        unit_results_df.dropna(subset=['Recovery %']).sort_values('Recovery %', ascending=False)
+        .groupby('Mineral', as_index=False)
+        .first()[['Mineral', 'Unit_ID', 'Recovery %']]
+        .rename(columns={'Unit_ID': 'Best Unit', 'Recovery %': 'Best Recovery %'})
+    )
+    worst_units = (
+        unit_results_df.dropna(subset=['Loss %']).sort_values('Loss %', ascending=False)
+        .groupby('Mineral', as_index=False)
+        .first()[['Mineral', 'Unit_ID', 'Loss %']]
+        .rename(columns={'Unit_ID': 'Highest Loss Unit', 'Loss %': 'Highest Loss %'})
+    )
+    leaderboard_df = best_units.merge(worst_units, on='Mineral', how='outer')
+
+    return {
+        'display_df': display_df,
+        'unit_grades': unit_grades,
+        'unit_results_df': unit_results_df,
+        'unit_summary_df': unit_summary_df,
+        'ranking_df': ranking_df,
+        'plant_recovery_df': pd.DataFrame(plant_rows),
+        'mass_balance_df': mass_balance_df,
+        'leaderboard_df': leaderboard_df,
+        'final_grade_df': final_grade_df,
+        'stage_grade_df': stage_grade_df,
+        'process_mass_map': process_map if process_map is not None else pd.DataFrame(columns=['Unit_Type', 'Unit_ID', 'Stream', 'Mass_tph']),
+        'merge_messages': merge_messages or [],
+        'insights': build_unit_insights(unit_summary_df),
+        'errors': calc_errors,
+    }
+
+
+def render_unit_section(unit_type, xrf_results):
+    section_heading("🔍", f"{unit_type} Performance")
+    section_df = xrf_results['unit_results_df'][xrf_results['unit_results_df']['Unit_Type'] == unit_type].copy()
+    summary_df = xrf_results['unit_summary_df'][xrf_results['unit_summary_df']['Unit_Type'] == unit_type].copy()
+    grades_df = xrf_results['unit_grades'][xrf_results['unit_grades']['Unit_Type'] == unit_type].copy()
+    if section_df.empty:
+        info_panel(f"No {unit_type.lower()} units found in the uploaded XRF file.")
+        return
+
+    best_row = summary_df.sort_values('Avg Recovery %', ascending=False).iloc[0]
+    worst_row = summary_df.sort_values('Avg Loss %', ascending=False).iloc[0]
+    metric_cols = st.columns(3)
+    metric_cols[0].metric("Highest Recovery Unit", best_row['Unit_ID'], f"{best_row['Avg Recovery %']:.2f}% avg")
+    metric_cols[1].metric("Highest Loss Unit", worst_row['Unit_ID'], f"{worst_row['Avg Loss %']:.2f}% avg loss")
+    metric_cols[2].metric("Best Performing Unit", best_row['Unit_ID'], f"Rank {int(best_row['Rank'])}" if pd.notna(best_row['Rank']) else "N/A")
+
+    st.dataframe(
+        summary_df[['Unit_ID', 'Avg Recovery %', 'Avg Loss %', 'Avg Grade Upgrade', 'Performance Score', 'Rank', 'Gold Tail Loss %', 'Zircon Tail Loss %', 'REE Midd Loss %', 'Ti Tail Loss %']].style.format({
+            'Avg Recovery %': '{:.2f}',
+            'Avg Loss %': '{:.2f}',
+            'Avg Grade Upgrade': '{:.2f}',
+            'Performance Score': '{:.2f}',
+            'Gold Tail Loss %': '{:.2f}',
+            'Zircon Tail Loss %': '{:.2f}',
+            'REE Midd Loss %': '{:.2f}',
+            'Ti Tail Loss %': '{:.2f}',
+        }),
+        use_container_width=True,
+        hide_index=True,
+    )
+    with st.expander(f"{unit_type} grades and interpreted minerals", expanded=False):
+        st.dataframe(grades_df, use_container_width=True, hide_index=True)
+
+    comparison_df = section_df[section_df['Element'].isin(['Au_ppm', 'TiO2', 'REE'])].pivot_table(
+        index='Unit_ID',
+        columns='Element',
+        values='Recovery %',
+        aggfunc='first',
+    ).reset_index().rename(columns={
+        'Au_ppm': 'Gold Rec',
+        'TiO2': 'Ti Rec',
+        'REE': 'REE Rec',
+    })
+    comparison_df = comparison_df.merge(
+        summary_df[['Unit_ID', 'Avg Loss %', 'Rank']],
+        on='Unit_ID',
+        how='left',
+    ).rename(columns={'Avg Loss %': 'Loss %'})
+    st.dataframe(
+        comparison_df.style.format({
+            'Gold Rec': '{:.2f}',
+            'Ti Rec': '{:.2f}',
+            'REE Rec': '{:.2f}',
+            'Loss %': '{:.2f}',
+        }),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.dataframe(
+        section_df[['Unit_ID', 'Mineral', 'Recovery %', 'Loss %', 'Tail Loss %', 'Midd Loss %', 'Grade Upgrade']].style.format({
+            'Recovery %': '{:.2f}',
+            'Loss %': '{:.2f}',
+            'Tail Loss %': '{:.2f}',
+            'Midd Loss %': '{:.2f}',
+            'Grade Upgrade': '{:.2f}',
+        }),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    for element in ['Au_ppm', 'ZrO2', 'TiO2', 'REE']:
+        mineral_name = XRF_MINERAL_LABELS[element]
+        element_df = section_df[section_df['Element'] == element]
+        chart_cols = st.columns(2)
+        recovery_fig = plot_metric_by_unit(element_df, 'Recovery %', f"{unit_type} {mineral_name} Recovery")
+        loss_fig = plot_metric_by_unit(element_df, 'Loss %', f"{unit_type} {mineral_name} Loss")
+        if recovery_fig is not None:
+            chart_cols[0].plotly_chart(recovery_fig, use_container_width=True)
+        if loss_fig is not None:
+            chart_cols[1].plotly_chart(loss_fig, use_container_width=True)
+
+
+def render_xrf_dashboard(xrf_df, xrf_results):
+    section_heading("🧪", "XRF Metallurgical Dashboard")
+    info_panel("Process mass is calculated internally from flow rate, slurry weight, dry weight, and slurry density. The XRF upload supplies grades only, and the dashboard scores units on high recovery plus low loss.")
+    preview_cols = ['Unit_Type', 'Unit_ID', 'Stream', 'Mass_tph', 'Au_ppm', 'REE', 'TiO2', 'Fe2O3', 'ZrO2', 'Garnet_Est']
+    st.markdown("#### Uploaded XRF Data")
+    st.dataframe(xrf_results['display_df'][preview_cols], use_container_width=True, hide_index=True)
+
+    for message in xrf_results['merge_messages']:
+        st.warning(message)
+    for message in xrf_results['errors']:
+        st.warning(message)
+
+    for _, row in xrf_results['mass_balance_df'].iterrows():
+        if not row['Balanced']:
+            diff_pct = 0 if pd.isna(row['Difference_pct']) else row['Difference_pct']
+            st.warning(
+                f"Mass balance error detected in {row['Unit_ID']}: "
+                f"feed {row['Feed_tph']:.2f} tph vs products {row['Products_tph']:.2f} tph "
+                f"({diff_pct:+.2f}%)."
+            )
+
+    top_cols = st.columns(3)
+    top_cols[0].metric("Spiral Units", f"{xrf_results['unit_summary_df'][xrf_results['unit_summary_df']['Unit_Type'] == 'Spiral'].shape[0]}")
+    top_cols[1].metric("Cleaner Units", f"{xrf_results['unit_summary_df'][xrf_results['unit_summary_df']['Unit_Type'] == 'Cleaner'].shape[0]}")
+    top_cols[2].metric("Insight Messages", f"{len(xrf_results['insights'])}")
+
+    module_tabs = st.tabs(["Spiral Performance", "Cleaner Performance", "Plant Summary"])
+    with module_tabs[0]:
+        render_unit_section('Spiral', xrf_results)
+    with module_tabs[1]:
+        render_unit_section('Cleaner', xrf_results)
+    with module_tabs[2]:
+        section_heading("🏭", "Plant Summary")
+        plant_recovery_df = xrf_results['plant_recovery_df'].copy()
+        metric_elements = ['ZrO2', 'TiO2', 'Fe2O3', 'Au_ppm']
+        metric_cols = st.columns(len(metric_elements))
+        for idx, element in enumerate(metric_elements):
+            row = plant_recovery_df[plant_recovery_df['Element'] == element]
+            value = row['Recovery %'].iloc[0] if not row.empty else None
+            metric_cols[idx].metric(f"{XRF_MINERAL_LABELS[element]} Recovery %", "N/A" if pd.isna(value) else f"{value:.2f}%")
+
+        final_grade_cols = st.columns(4)
+        for idx, mineral in enumerate(['Gold', 'Zircon', 'Ilmenite', 'Monazite']):
+            grade_row = xrf_results['final_grade_df'][xrf_results['final_grade_df']['Mineral'] == mineral]
+            grade_value = grade_row['Final Grade'].iloc[0] if not grade_row.empty else None
+            suffix = 'ppm' if mineral == 'Gold' else '%'
+            final_grade_cols[idx].metric(f"Final {mineral} Grade", "N/A" if pd.isna(grade_value) else f"{grade_value:.2f} {suffix}")
+
+        st.dataframe(
+            plant_recovery_df[['Mineral', 'Recovery %', 'Loss %']].style.format({'Recovery %': '{:.2f}', 'Loss %': '{:.2f}'}),
+            use_container_width=True,
+            hide_index=True,
+        )
+        rec_chart_df = plant_recovery_df.rename(columns={'Mineral': 'Unit_ID'})
+        plant_chart_cols = st.columns(2)
+        rec_fig = plot_metric_by_unit(rec_chart_df, 'Recovery %', 'Overall Plant Recovery by Mineral')
+        loss_fig = plot_metric_by_unit(rec_chart_df, 'Loss %', 'Overall Plant Loss by Mineral')
+        if rec_fig is not None:
+            plant_chart_cols[0].plotly_chart(rec_fig, use_container_width=True)
+        if loss_fig is not None:
+            plant_chart_cols[1].plotly_chart(loss_fig, use_container_width=True)
+
+        stage_chart_df = xrf_results['stage_grade_df'][xrf_results['stage_grade_df']['Element'].isin(['Au_ppm', 'ZrO2', 'REE', 'TiO2'])].copy()
+        if not stage_chart_df.empty:
+            fig_stage = go.Figure()
+            for mineral in stage_chart_df['Mineral'].unique():
+                mineral_df = stage_chart_df[stage_chart_df['Mineral'] == mineral]
+                fig_stage.add_trace(go.Scatter(
+                    x=mineral_df['Stage'],
+                    y=mineral_df['Grade'],
+                    mode='lines+markers',
+                    name=mineral,
+                ))
+            fig_stage.update_layout(
+                title=dict(text='Feed to Final Concentrate Grade Trend', x=0),
+                xaxis=dict(title='Stage', showgrid=False),
+                yaxis=dict(title='Grade', showgrid=True, gridcolor='rgba(148,163,184,0.16)'),
+                plot_bgcolor='rgba(15, 23, 42, 0.92)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                height=340,
+                font=dict(family='Inter', color='#E2E8F0'),
+            )
+            st.plotly_chart(fig_stage, use_container_width=True)
+
+        st.markdown("#### Best vs Worst Units")
+        st.dataframe(
+            xrf_results['leaderboard_df'].style.format({
+                'Best Recovery %': '{:.2f}',
+                'Highest Loss %': '{:.2f}',
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.markdown("#### Insight Engine")
+        if xrf_results['insights']:
+            for message in xrf_results['insights']:
+                pro_alert("Process Insight", message, "warning")
+        else:
+            info_panel("No major low-recovery or low-upgrade flags were triggered.")
+
+        if not xrf_results['ranking_df'].empty:
+            spiral_ranking = xrf_results['ranking_df'][xrf_results['ranking_df']['Unit_Type'] == 'Spiral'].sort_values('Rank')
+            if not spiral_ranking.empty:
+                st.markdown(f"**Best Performing Unit:** {spiral_ranking.iloc[0]['Unit_ID']}")
+                st.markdown(f"**Worst Performing Unit:** {spiral_ranking.iloc[-1]['Unit_ID']}")
+
+        st.markdown("#### Mass Balance Check")
+        st.dataframe(
+            xrf_results['mass_balance_df'].style.format({
+                'Feed_tph': '{:.2f}',
+                'Products_tph': '{:.2f}',
+                'Difference_tph': '{:+.2f}',
+                'Difference_pct': '{:+.2f}',
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
 def empty_sensitivity_summary(is_secondary=False):
     if is_secondary:
         return pd.DataFrame(columns=[
@@ -746,13 +1660,7 @@ def load_sensitivity_summary(path, sheet_name, score_kind="primary"):
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
-def main():
-    st.set_page_config(
-        page_title='Spiral Concentrator Analysis Pro',
-        page_icon='🏭',
-        layout='wide',
-        initial_sidebar_state='expanded',
-    )
+def render_spiral_dashboard():
 
     # Inject global CSS
     st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
@@ -776,6 +1684,11 @@ def main():
             type=["xlsx"],
             help="Upload an Excel file using the provided template.",
         )
+        xrf_uploaded_file = st.file_uploader(
+            "Upload XRF Excel",
+            type=["xlsx"],
+            help="Upload a unit-level assay workbook with Unit_Type, Unit_ID, Stream, and elemental grades. Mass is calculated internally from process data.",
+        )
 
         path = 'Spiral Plant Sheet.xlsx'
         if uploaded_file is not None:
@@ -784,6 +1697,27 @@ def main():
         else:
             df, group = load_data(path)
             st.info("📊 Using default plant data")
+
+        xrf_df = None
+        xrf_results = None
+        xrf_errors = []
+        if xrf_uploaded_file is not None:
+            try:
+                xrf_df = normalize_xrf_data(load_xrf_excel(xrf_uploaded_file.getvalue()))
+                xrf_errors = validate_xrf_data(xrf_df)
+                if xrf_errors:
+                    st.warning("XRF file loaded with validation issues. Open the XRF Dashboard tab for details.")
+                else:
+                    merged_xrf_df, process_mass_map, merge_messages = merge_xrf_with_process_data(xrf_df, df)
+                    if merged_xrf_df.empty:
+                        xrf_errors = merge_messages or ["No XRF rows could be matched to internally calculated process mass."]
+                        st.warning("XRF file could not be merged with process mass data.")
+                    else:
+                        xrf_results = build_xrf_results(merged_xrf_df, process_map=process_mass_map, merge_messages=merge_messages)
+                        st.success("XRF data ready")
+            except Exception as exc:
+                xrf_errors = [f"Could not read the uploaded XRF file: {exc}"]
+                st.error(xrf_errors[0])
 
         template = pd.DataFrame({
             'Spiral unit': [],
@@ -799,6 +1733,32 @@ def main():
             "⬇️  Download Template",
             data=template_buffer.getvalue(),
             file_name="plant_template.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        xrf_template = pd.DataFrame([
+            {'Unit_Type': 'Spiral', 'Unit_ID': 'Spiral 1', 'Stream': 'Feed', 'TiO2': 4.8, 'Fe2O3': 12.5, 'ZrO2': 1.2, 'Au_ppm': 0.35, 'REE': 0.90},
+            {'Unit_Type': 'Spiral', 'Unit_ID': 'Spiral 1', 'Stream': 'Conc', 'TiO2': 9.6, 'Fe2O3': 18.1, 'ZrO2': 3.1, 'Au_ppm': 0.82, 'REE': 1.70},
+            {'Unit_Type': 'Spiral', 'Unit_ID': 'Spiral 1', 'Stream': 'Tail', 'TiO2': 2.7, 'Fe2O3': 9.7, 'ZrO2': 0.6, 'Au_ppm': 0.14, 'REE': 0.42},
+            {'Unit_Type': 'Spiral', 'Unit_ID': 'Spiral 2', 'Stream': 'Feed', 'TiO2': 5.1, 'Fe2O3': 11.9, 'ZrO2': 1.0, 'Au_ppm': 0.31, 'REE': 0.82},
+            {'Unit_Type': 'Spiral', 'Unit_ID': 'Spiral 2', 'Stream': 'Conc', 'TiO2': 8.9, 'Fe2O3': 16.8, 'ZrO2': 2.6, 'Au_ppm': 0.61, 'REE': 1.34},
+            {'Unit_Type': 'Spiral', 'Unit_ID': 'Spiral 2', 'Stream': 'Midd', 'TiO2': 5.8, 'Fe2O3': 12.8, 'ZrO2': 1.2, 'Au_ppm': 0.29, 'REE': 0.91},
+            {'Unit_Type': 'Spiral', 'Unit_ID': 'Spiral 2', 'Stream': 'Tail', 'TiO2': 2.9, 'Fe2O3': 8.7, 'ZrO2': 0.4, 'Au_ppm': 0.10, 'REE': 0.30},
+            {'Unit_Type': 'Cleaner', 'Unit_ID': 'Cleaner 1', 'Stream': 'Feed', 'TiO2': 9.2, 'Fe2O3': 17.3, 'ZrO2': 2.9, 'Au_ppm': 0.71, 'REE': 1.55},
+            {'Unit_Type': 'Cleaner', 'Unit_ID': 'Cleaner 1', 'Stream': 'Conc', 'TiO2': 15.7, 'Fe2O3': 24.8, 'ZrO2': 5.4, 'Au_ppm': 1.22, 'REE': 2.61},
+            {'Unit_Type': 'Cleaner', 'Unit_ID': 'Cleaner 1', 'Stream': 'Tail', 'TiO2': 3.0, 'Fe2O3': 7.6, 'ZrO2': 0.8, 'Au_ppm': 0.18, 'REE': 0.48},
+            {'Unit_Type': 'Cleaner', 'Unit_ID': 'Cleaner 2', 'Stream': 'Feed', 'TiO2': 8.6, 'Fe2O3': 16.1, 'ZrO2': 2.5, 'Au_ppm': 0.64, 'REE': 1.38},
+            {'Unit_Type': 'Cleaner', 'Unit_ID': 'Cleaner 2', 'Stream': 'Conc', 'TiO2': 14.2, 'Fe2O3': 22.0, 'ZrO2': 4.8, 'Au_ppm': 1.05, 'REE': 2.21},
+            {'Unit_Type': 'Cleaner', 'Unit_ID': 'Cleaner 2', 'Stream': 'Midd', 'TiO2': 7.4, 'Fe2O3': 13.4, 'ZrO2': 1.8, 'Au_ppm': 0.40, 'REE': 1.05},
+            {'Unit_Type': 'Cleaner', 'Unit_ID': 'Cleaner 2', 'Stream': 'Tail', 'TiO2': 2.8, 'Fe2O3': 6.9, 'ZrO2': 0.6, 'Au_ppm': 0.15, 'REE': 0.41},
+        ])
+        xrf_template_buffer = io.BytesIO()
+        with pd.ExcelWriter(xrf_template_buffer) as writer:
+            xrf_template.to_excel(writer, index=False, sheet_name='XRF Data')
+        st.download_button(
+            "Download XRF Template",
+            data=xrf_template_buffer.getvalue(),
+            file_name="xrf_template.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
@@ -1062,6 +2022,7 @@ def main():
 
     top_tabs = st.tabs([
         "Overview",
+        "XRF Dashboard",
         "Alerts",
         "Simulation",
         "History",
@@ -1115,6 +2076,21 @@ def main():
             st.caption(f"Tailing = {tailing_daily:.2f} TPD ({loss_pct:.1f}% of plant feed)")
 
     with top_tabs[1]:
+        if xrf_uploaded_file is None:
+            section_heading("🧪", "XRF Metallurgical Dashboard")
+            info_panel("Upload an XRF Excel file from the sidebar to enable integrated grade and recovery analytics.")
+        elif xrf_results is not None:
+            render_xrf_dashboard(xrf_df, xrf_results)
+        else:
+            section_heading("🧪", "XRF Metallurgical Dashboard")
+            if xrf_df is not None:
+                preview_cols = [col for col in XRF_REQUIRED_COLUMNS if col in xrf_df.columns]
+                st.dataframe(xrf_df[preview_cols], use_container_width=True, hide_index=True)
+            for message in xrf_errors:
+                pro_alert("XRF Validation", message, "warning")
+            info_panel("Correct the XRF workbook issues above and re-upload to calculate per-unit and plant recovery.")
+
+    with top_tabs[2]:
         section_heading("🚨", "Alerts & Recommendations")
         if alerts:
             for variant, title, msg in alerts:
@@ -1122,7 +2098,7 @@ def main():
         else:
             st.markdown('<div class="pro-alert pro-alert-success">✅ <strong>All systems nominal</strong> — No critical alerts detected.</div>', unsafe_allow_html=True)
 
-    with top_tabs[2]:
+    with top_tabs[3]:
         section_heading("🔮", "Production Simulation")
         sim_cols = st.columns(3)
         with sim_cols[0]:
@@ -1148,7 +2124,7 @@ def main():
         fig = make_bar_chart(sim_data, 'Scenario', 'Concentrate TPD', 'Production Scenarios', 'Concentrate (TPD)')
         st.plotly_chart(fig, use_container_width=True)
 
-    with top_tabs[3]:
+    with top_tabs[4]:
         section_heading("📅", "Historical Tracking")
         if not df_history.empty:
             df_history['Date'] = pd.to_datetime(df_history['Date'])
@@ -1223,7 +2199,7 @@ def main():
         else:
             info_panel("No historical data yet. Save today's values to begin trend tracking.")
 
-    with top_tabs[4]:
+    with top_tabs[5]:
         section_heading("🧪", "Detailed Analysis")
         info_panel("Use these tabs for deeper operational views. Each section is separated to keep the dashboard lighter.")
         tabs = st.tabs([
@@ -1461,5 +2437,16 @@ def main():
                 )
 
 
+def main():
+    st.set_page_config(
+        page_title='Spiral Concentrator Analysis Pro',
+        page_icon='🏭',
+        layout='wide',
+        initial_sidebar_state='expanded',
+    )
+    render_spiral_dashboard()
+
+
 if __name__ == '__main__':
     main()
+
